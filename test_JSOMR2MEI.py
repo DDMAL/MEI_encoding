@@ -1,11 +1,12 @@
 # this is the local test version of the rodan job
 # ignore this file
 
-import sys, json
+import sys
+import json
 from MeiOutput import MeiOutput
 
-if __name__== "__main__":
-    
+if __name__ == "__main__":
+
     if len(sys.argv) == 3:
         (tmp, inJSOMR, version) = sys.argv
     elif len(sys.argv) == 2:
@@ -22,7 +23,8 @@ if __name__== "__main__":
 
     }
 
-
     mei_obj = MeiOutput(jsomr, version, **kwargs)
     mei_string = mei_obj.run()
 
+    print("\nFILE COMPLETE:\n")
+    print(mei_string, '\n')
