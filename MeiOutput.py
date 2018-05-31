@@ -160,6 +160,14 @@ class MeiOutput(object):
         el = MeiElement("clef")
         parent.addChild(el)
 
+        zoneId = self._generate_zone(self.surface,
+                                     glyph['glyph']['bounding_box']['ulx'],
+                                     glyph['glyph']['bounding_box']['uly'],
+                                     glyph['glyph']['bounding_box']['nrows'],
+                                     glyph['glyph']['bounding_box']['ncols'])
+        el.addAttribute('facs', zoneId)
+        el.addAttribute('shape', glyph['glyph']['name'].split('.')[1].upper())
+
     def _generate_custos(self, parent, glyph):
         el = MeiElement("custos")
         parent.addChild(el)
