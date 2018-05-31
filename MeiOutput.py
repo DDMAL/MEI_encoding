@@ -1,4 +1,4 @@
-from pymei import MeiDocument, MeiElement, documentToText, version_info
+from pymei import MeiDocument, MeiElement, documentToText  # , version_info
 
 
 class MeiOutput(object):
@@ -11,7 +11,7 @@ class MeiOutput(object):
         self.surface = 0
 
     def run(self):
-        print("version info", version_info)
+        # print("version info", version_info)
         if self.version == 'N':
             return self._conversion()
         else:
@@ -172,6 +172,15 @@ class MeiOutput(object):
         el = MeiElement("custos")
         parent.addChild(el)
 
+        zoneId = self._generate_zone(self.surface,
+                                     glyph['glyph']['bounding_box']['ulx'],
+                                     glyph['glyph']['bounding_box']['uly'],
+                                     glyph['glyph']['bounding_box']['nrows'],
+                                     glyph['glyph']['bounding_box']['ncols'])
+        el.addAttribute('facs', zoneId)
+        el.addAttribute("oct", glyph['pitch']['octave'])
+        el.addAttribute("pname", glyph['pitch']['note'])
+
     def _generate_syllable(self, parent, glyph):
         el = MeiElement("syllable")
         parent.addChild(el)
@@ -201,8 +210,8 @@ class MeiOutput(object):
         glyphNote = glyph['pitch']['note']
         glyphParams = {
             'diagonalright': False,
-            'con': False,
-            'intm': False
+            'con': False,               # can contain 'g' or 'l'
+            'intm': False,              # can contain 'u' or 'd'
         }
 
         if glyphName[1] == 'punctum':
@@ -284,6 +293,15 @@ class MeiOutput(object):
             self._generate_nc(el, newPitch[0], newPitch[1], **glyphParams)
 
         # elif glyphName[1] == 'ancus':
+        #     self._generate_nc(el, glyphOctave, glyphNote, **glyphParams)
+
+        #     newPitch = self._findRelativeNote(glyphOctave, glyphNote, 'd', glyphName[2])
+        #     glyphParams['intm'] = 'd'
+        #     self._generate_nc(el, newPitch[0], newPitch[1], **glyphParams)
+
+        #     newPitch = self._findRelativeNote(newPitch[0], newPitch[1], 'd', glyphName[3])
+        #     glyphParams['intm'] = 'd'
+        #     self._generate_nc(el, newPitch[0], newPitch[1], **glyphParams)
 
     def _generate_nc(self, parent, octave, pname, **kwargs):
         x = 29+3
