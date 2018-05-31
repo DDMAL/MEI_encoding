@@ -5,10 +5,11 @@ class MeiOutput(object):
 
     SCALE = ['a', 'b', 'c', 'd', 'e', 'f', 'g']
 
-    def __init__(self, incoming_data, version, **kwargs):
+    def __init__(self, incoming_data, version, image, **kwargs):
         self.incoming_data = incoming_data
         self.version = version
         self.surface = 0
+        self.original_image = image
 
     def run(self):
         # print("version info", version_info)
@@ -81,7 +82,14 @@ class MeiOutput(object):
         el = MeiElement("surface")
         parent.addChild(el)
 
+        self._generate_graphic(el)
         self.surface = el
+
+    def _generate_graphic(self, parent):
+        el = MeiElement("graphic")
+        parent.addChild(el)
+
+        el.addAttribute('xlink:href', str(self.original_image))
 
     def _generate_body(self, parent):
         el = MeiElement("body")
@@ -153,6 +161,10 @@ class MeiOutput(object):
                 self._generate_clef(el, g)
             elif glyphName[0] == 'custos':
                 self._generate_custos(el, g)
+            elif glyphName[0] == 'division':
+                self._generate_division(el, g)
+            elif glyphName[0] == 'accidental':
+                self._generate_accidental(el, g)
             else:
                 self._generate_syllable(el, g)
 
@@ -160,11 +172,7 @@ class MeiOutput(object):
         el = MeiElement("clef")
         parent.addChild(el)
 
-        zoneId = self._generate_zone(self.surface,
-                                     glyph['glyph']['bounding_box']['ulx'],
-                                     glyph['glyph']['bounding_box']['uly'],
-                                     glyph['glyph']['bounding_box']['nrows'],
-                                     glyph['glyph']['bounding_box']['ncols'])
+        zoneId = self._generate_zone(self.surface, glyph['glyph']['bounding_box'])
         el.addAttribute('facs', zoneId)
         el.addAttribute('shape', glyph['glyph']['name'].split('.')[1].upper())
 
@@ -172,14 +180,26 @@ class MeiOutput(object):
         el = MeiElement("custos")
         parent.addChild(el)
 
-        zoneId = self._generate_zone(self.surface,
-                                     glyph['glyph']['bounding_box']['ulx'],
-                                     glyph['glyph']['bounding_box']['uly'],
-                                     glyph['glyph']['bounding_box']['nrows'],
-                                     glyph['glyph']['bounding_box']['ncols'])
+        zoneId = self._generate_zone(self.surface, glyph['glyph']['bounding_box'])
         el.addAttribute('facs', zoneId)
         el.addAttribute("oct", glyph['pitch']['octave'])
         el.addAttribute("pname", glyph['pitch']['note'])
+
+    def _generate_division(self, parent, glyph):
+        el = MeiElement("division")
+        parent.addChild(el)
+
+        zoneId = self._generate_zone(self.surface, glyph['glyph']['bounding_box'])
+        el.addAttribute('facs', zoneId)
+        el.addAttribute("form", glyph['glyph']['name'].split('.')[1])
+
+    def _generate_accidental(self, parent, glyph):
+        el = MeiElement("accid")
+        parent.addChild(el)
+
+        zoneId = self._generate_zone(self.surface, glyph['glyph']['bounding_box'])
+        el.addAttribute('facs', zoneId)
+        el.addAttribute("type", glyph['glyph']['name'].split('.')[1])
 
     def _generate_syllable(self, parent, glyph):
         el = MeiElement("syllable")
@@ -198,11 +218,7 @@ class MeiOutput(object):
         el = MeiElement("neume")
         parent.addChild(el)
 
-        zoneId = self._generate_zone(self.surface,
-                                     glyph['glyph']['bounding_box']['ulx'],
-                                     glyph['glyph']['bounding_box']['uly'],
-                                     glyph['glyph']['bounding_box']['nrows'],
-                                     glyph['glyph']['bounding_box']['ncols'])
+        zoneId = self._generate_zone(self.surface, glyph['glyph']['bounding_box'])
         el.addAttribute('facs', zoneId)
 
         glyphName = glyph['glyph']['name'].split('.')
@@ -318,7 +334,9 @@ class MeiOutput(object):
         el.addAttribute("oct", octave)
         el.addAttribute("pname", pname)
 
-    def _generate_zone(self, parent, ulx, uly, nrows, ncols):
+    def _generate_zone(self, parent, bounding_box):
+        (nrows, ulx, uly, ncols) = bounding_box.values()
+
         el = MeiElement("zone")
         parent.addChild(el)
 
