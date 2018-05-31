@@ -1,4 +1,4 @@
-from pymei import MeiDocument, MeiElement, documentToText
+from pymei import MeiDocument, MeiElement, documentToText, version_info
 
 
 class MeiOutput(object):
@@ -46,12 +46,10 @@ class MeiOutput(object):
     def __init__(self, incoming_data, version, **kwargs):
         self.incoming_data = incoming_data
         self.version = version
-        self.currentGlyph = 0
+        self.surface = 0
 
     def run(self):
-
-        print(self.incoming_data[0])
-
+        print("version info", version_info)
         if self.version == 'N':
             return self.conversion()
         else:
@@ -107,8 +105,21 @@ class MeiOutput(object):
         parent.addChild(el)
 
         # self._generate_front(el)          # unnecesary
+        self._generate_facsimile(el)
         self._generate_body(el)
         # self._generate_back(el)           # unnecesary
+
+    def _generate_facsimile(self, parent):
+        el = MeiElement("facsimile")
+        parent.addChild(el)
+
+        self._generate_surface(el)
+
+    def _generate_surface(self, parent):
+        el = MeiElement("surface")
+        parent.addChild(el)
+
+        self.surface = el
 
     def _generate_body(self, parent):
         el = MeiElement("body")
@@ -187,13 +198,9 @@ class MeiOutput(object):
         el = MeiElement("clef")
         parent.addChild(el)
 
-        # self._generate_(el)
-
     def _generate_custos(self, parent, glyph):
         el = MeiElement("custos")
         parent.addChild(el)
-
-        # self._generate_(el)
 
     def _generate_syllable(self, parent, glyph):
         el = MeiElement("syllable")
@@ -212,6 +219,13 @@ class MeiOutput(object):
         el = MeiElement("neume")
         parent.addChild(el)
 
+        zoneId = self._generate_zone(self.surface,
+                                     glyph['glyph']['bounding_box']['ulx'],
+                                     glyph['glyph']['bounding_box']['uly'],
+                                     glyph['glyph']['bounding_box']['nrows'],
+                                     glyph['glyph']['bounding_box']['ncols'])
+        el.addAttribute('facs', zoneId)
+
         glyphName = glyph['glyph']['name'].split('.')
         glyphOctave = glyph['pitch']['octave']
         glyphNote = glyph['pitch']['note']
@@ -228,6 +242,9 @@ class MeiOutput(object):
             self._generate_nc(el, glyphOctave, glyphNote, **glyphVisuals)
 
         # elif glyphName[1] == 'cephalicus':
+        #     self._generate_nc(el, glyphOctave, glyphNote, **glyphVisuals)
+        #     newPitch = self._findRelativeNote(glyphOctave, glyphNote, 'd', glyphName[2])
+        #     self._generate_nc(el, newPitch[0], newPitch[1], **glyphVisuals)
 
         elif glyphName[1] == 'clivis':
             self._generate_nc(el, glyphOctave, glyphNote, **glyphVisuals)
@@ -235,6 +252,9 @@ class MeiOutput(object):
             self._generate_nc(el, newPitch[0], newPitch[1], **glyphVisuals)
 
         # elif glyphName[1] == 'epiphonus':
+        #     self._generate_nc(el, glyphOctave, glyphNote, **glyphVisuals)
+        #     newPitch = self._findRelativeNote(glyphOctave, glyphNote, 'u', glyphName[2])
+        #     self._generate_nc(el, newPitch[0], newPitch[1], **glyphVisuals)
 
         elif glyphName[1] == 'podatus':
             self._generate_nc(el, glyphOctave, glyphNote, **glyphVisuals)
@@ -249,6 +269,11 @@ class MeiOutput(object):
             self._generate_nc(el, newPitch[0], newPitch[1], **glyphVisuals)
 
         # elif glyphName[1] == 'salicus':
+        #     self._generate_nc(el, glyphOctave, glyphNote, **glyphVisuals)
+        #     newPitch = self._findRelativeNote(glyphOctave, glyphNote, 'u', glyphName[2])
+        #     self._generate_nc(el, newPitch[0], newPitch[1], **glyphVisuals)
+        #     newPitch = self._findRelativeNote(newPitch[0], newPitch[1], 'u', glyphName[3])
+        #     self._generate_nc(el, newPitch[0], newPitch[1], **glyphVisuals)
 
         elif glyphName[1] == 'scandicus':
             self._generate_nc(el, glyphOctave, glyphNote, **glyphVisuals)
@@ -267,6 +292,7 @@ class MeiOutput(object):
         # elif glyphName[1] == 'ancus':
 
     def _generate_nc(self, parent, octave, pname, **kwargs):
+        x = 29+3
         el = MeiElement("nc")
         parent.addChild(el)
 
@@ -280,28 +306,37 @@ class MeiOutput(object):
         el.addAttribute("oct", octave)
         el.addAttribute("pname", pname)
 
-        # self._generate_(el)
-
-    def _generate_(self, parent):
-        el = MeiElement("")
+    def _generate_zone(self, parent, ulx, uly, nrows, ncols):
+        el = MeiElement("zone")
         parent.addChild(el)
 
-        # self._generate_(el)
+        el.addAttribute("ulx", str(ulx))
+        el.addAttribute("uly", str(uly))
+        el.addAttribute("lrx", str(ulx + nrows))
+        el.addAttribute("lry", str(uly + ncols))
 
-    def _generate_(self, parent):
-        el = MeiElement("")
-        parent.addChild(el)
+        return el.getId()
 
-        # self._generate_(el)
+        # def _generate_(self, parent):
+        #     el = MeiElement("")
+        #     parent.addChild(el)
 
-    def _generate_(self, parent):
-        el = MeiElement("")
-        parent.addChild(el)
+        #     # self._generate_(el)
 
-        # self._generate_(el)
+        # def _generate_(self, parent):
+        #     el = MeiElement("")
+        #     parent.addChild(el)
 
-    def _generate_(self, parent):
-        el = MeiElement("")
-        parent.addChild(el)
+        #     # self._generate_(el)
 
-        # self._generate_(el)
+        # def _generate_(self, parent):
+        #     el = MeiElement("")
+        #     parent.addChild(el)
+
+        #     # self._generate_(el)
+
+        # def _generate_(self, parent):
+        #     el = MeiElement("")
+        #     parent.addChild(el)
+
+        #     # self._generate_(el)

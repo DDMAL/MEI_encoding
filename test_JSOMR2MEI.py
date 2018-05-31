@@ -27,4 +27,7 @@ if __name__ == "__main__":
     mei_string = mei_obj.run()
 
     print("\nFILE COMPLETE:\n")
+    with open("file.mei", "w") as f:
+        f.write(mei_string)
+
     print(mei_string, '\n')

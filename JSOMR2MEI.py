@@ -2,6 +2,8 @@ from gamera.core import Image
 
 from rodan.jobs.base import RodanTask
 import json
+from MeiOutput import MeiOutput
+
 
 class JSOMR2MEI(RodanTask):
     name = 'JSOMR to MEI'
@@ -13,16 +15,14 @@ class JSOMR2MEI(RodanTask):
         'required': ['MEI Version'],
         'properties': {
             'MEI Version': {
-                'type': 'integer',
-                'default': 3,
-                'minimum': 0,
-                'maximum': 4,
+                'type': 'string',
+                'default': 'N',
                 'description': 'MEI file version to generate'
             }
-        } 
+        }
     }
     enabled = True
-    category = "Test"
+    category = "MEI Generation"
     interactive = False
     input_port_types = [{
         'name': 'JSOMR (JSON of CC and pitch)',
@@ -43,19 +43,20 @@ class JSOMR2MEI(RodanTask):
 
         with open(inputs['JSOMR (JSON of CC and pitch)'][0]['resource_path'], 'r') as file:
             jsomr = json.loads(file.read())
-        print jsomr
 
-        mei_version = settings['MEI Version']
-        print mei_version
-       
+        version = 'N'
         kwargs = {
 
         }
+        print(version)
 
-        output_mei = jsomr
+        # do job
+        mei_obj = MeiOutput(jsomr, version, **kwargs)
+        mei_string = mei_obj.run()
 
+        # output results
         outfile_path = outputs['MEI'][0]['resource_path']
-        outfile = open(outfile_path, "w")
-        outfile.write(json.dumps(output_mei))
-        outfile.close()
+        with open(outfile_path, "w") as outfile:
+            outfile.write(mei_string)
+
         return True

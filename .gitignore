@@ -106,3 +106,4 @@ ENV/
 # my ignored stuff
 ignore
 venv*
+file.mei
