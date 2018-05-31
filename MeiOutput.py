@@ -3,44 +3,6 @@ from pymei import MeiDocument, MeiElement, documentToText, version_info
 
 class MeiOutput(object):
 
-    # define the form of a neume.
-    # form: [ num, interval_dir... ]
-    # e.g., clivis: [2, 'd']
-    # torculus: [3, 'u', 'd']
-    NEUME_NOTES = {
-        'punctum': [],
-        'virga': [],
-        'cephalicus': ['d'],
-        'clivis': ['d'],
-        'epiphonus': ['u'],
-        'podatus': ['u'],
-        'porrectus': ['d', 'u'],
-        'salicus': ['u', 'u'],
-        'scandicus': ['u', 'u'],
-        'torculus': ['u', 'd'],
-        'ancus': ['d', 'd'],  # See note 1 below
-    }
-
-    NEUME_NAMES = [
-        'punctum',
-        'virga',
-        'cephalicus',
-        'clivis',
-        'epiphonus',
-        'podatus',
-        'porrectus',
-        'salicus',
-        'scandicus',
-        'torculus',
-        'ancus',
-    ]
-
-    # given an alternate form, how many notes does it add to the neume?
-    ADD_NOTES = {
-        'flexus': ['d'],  # scandicus.flexus, porrectus.flexus
-        'resupinus': ['u'],  # torculus.resupinus
-    }
-
     SCALE = ['a', 'b', 'c', 'd', 'e', 'f', 'g']
 
     def __init__(self, incoming_data, version, **kwargs):
@@ -51,18 +13,18 @@ class MeiOutput(object):
     def run(self):
         print("version info", version_info)
         if self.version == 'N':
-            return self.conversion()
+            return self._conversion()
         else:
             print('not valid MEI version')
 
-    def conversion(self):
+    def _conversion(self):
         print('begin conversion')
 
-        doc = self.createDoc()
+        doc = self._createDoc()
 
         return documentToText(doc)
 
-    def createDoc(self):
+    def _createDoc(self):
         # initialize basic universal attributes of any MEI document
         doc = MeiDocument()
 
@@ -229,65 +191,89 @@ class MeiOutput(object):
         glyphName = glyph['glyph']['name'].split('.')
         glyphOctave = glyph['pitch']['octave']
         glyphNote = glyph['pitch']['note']
-        glyphVisuals = {
+        glyphParams = {
             'diagonalright': False,
             'con': False,
             'intm': False
         }
 
         if glyphName[1] == 'punctum':
-            self._generate_nc(el, glyphOctave, glyphNote, **glyphVisuals)
+            self._generate_nc(el, glyphOctave, glyphNote, **glyphParams)
 
         elif glyphName[1] == 'virga':
-            self._generate_nc(el, glyphOctave, glyphNote, **glyphVisuals)
+            self._generate_nc(el, glyphOctave, glyphNote, **glyphParams)
 
         # elif glyphName[1] == 'cephalicus':
-        #     self._generate_nc(el, glyphOctave, glyphNote, **glyphVisuals)
+        #     self._generate_nc(el, glyphOctave, glyphNote, **glyphParams)
+
         #     newPitch = self._findRelativeNote(glyphOctave, glyphNote, 'd', glyphName[2])
-        #     self._generate_nc(el, newPitch[0], newPitch[1], **glyphVisuals)
+        #     glyphParams['intm'] = 'd'
+        #     self._generate_nc(el, newPitch[0], newPitch[1], **glyphParams)
 
         elif glyphName[1] == 'clivis':
-            self._generate_nc(el, glyphOctave, glyphNote, **glyphVisuals)
+            self._generate_nc(el, glyphOctave, glyphNote, **glyphParams)
+
             newPitch = self._findRelativeNote(glyphOctave, glyphNote, 'd', glyphName[2])
-            self._generate_nc(el, newPitch[0], newPitch[1], **glyphVisuals)
+            glyphParams['intm'] = 'd'
+            self._generate_nc(el, newPitch[0], newPitch[1], **glyphParams)
 
         # elif glyphName[1] == 'epiphonus':
-        #     self._generate_nc(el, glyphOctave, glyphNote, **glyphVisuals)
+        #     self._generate_nc(el, glyphOctave, glyphNote, **glyphParams)
+
         #     newPitch = self._findRelativeNote(glyphOctave, glyphNote, 'u', glyphName[2])
-        #     self._generate_nc(el, newPitch[0], newPitch[1], **glyphVisuals)
+        #     glyphParams['intm'] = 'u'
+        #     self._generate_nc(el, newPitch[0], newPitch[1], **glyphParams)
 
         elif glyphName[1] == 'podatus':
-            self._generate_nc(el, glyphOctave, glyphNote, **glyphVisuals)
+            self._generate_nc(el, glyphOctave, glyphNote, **glyphParams)
+
             newPitch = self._findRelativeNote(glyphOctave, glyphNote, 'u', glyphName[2])
-            self._generate_nc(el, newPitch[0], newPitch[1], **glyphVisuals)
+            glyphParams['intm'] = 'u'
+            self._generate_nc(el, newPitch[0], newPitch[1], **glyphParams)
 
         elif glyphName[1] == 'porrectus':
-            self._generate_nc(el, glyphOctave, glyphNote, **glyphVisuals)
+            self._generate_nc(el, glyphOctave, glyphNote, **glyphParams)
+
             newPitch = self._findRelativeNote(glyphOctave, glyphNote, 'd', glyphName[2])
-            self._generate_nc(el, newPitch[0], newPitch[1], **glyphVisuals)
+            glyphParams['intm'] = 'd'
+            self._generate_nc(el, newPitch[0], newPitch[1], **glyphParams)
+
             newPitch = self._findRelativeNote(newPitch[0], newPitch[1], 'u', glyphName[3])
-            self._generate_nc(el, newPitch[0], newPitch[1], **glyphVisuals)
+            glyphParams['intm'] = 'u'
+            self._generate_nc(el, newPitch[0], newPitch[1], **glyphParams)
 
         # elif glyphName[1] == 'salicus':
-        #     self._generate_nc(el, glyphOctave, glyphNote, **glyphVisuals)
+        #     self._generate_nc(el, glyphOctave, glyphNote, **glyphParams)
+
         #     newPitch = self._findRelativeNote(glyphOctave, glyphNote, 'u', glyphName[2])
-        #     self._generate_nc(el, newPitch[0], newPitch[1], **glyphVisuals)
+        #     glyphParams['intm'] = 'u'
+        #     self._generate_nc(el, newPitch[0], newPitch[1], **glyphParams)
+
         #     newPitch = self._findRelativeNote(newPitch[0], newPitch[1], 'u', glyphName[3])
-        #     self._generate_nc(el, newPitch[0], newPitch[1], **glyphVisuals)
+        #     glyphParams['intm'] = 'u'
+        #     self._generate_nc(el, newPitch[0], newPitch[1], **glyphParams)
 
         elif glyphName[1] == 'scandicus':
-            self._generate_nc(el, glyphOctave, glyphNote, **glyphVisuals)
+            self._generate_nc(el, glyphOctave, glyphNote, **glyphParams)
+
             newPitch = self._findRelativeNote(glyphOctave, glyphNote, 'u', glyphName[2])
-            self._generate_nc(el, newPitch[0], newPitch[1], **glyphVisuals)
+            glyphParams['intm'] = 'u'
+            self._generate_nc(el, newPitch[0], newPitch[1], **glyphParams)
+
             newPitch = self._findRelativeNote(newPitch[0], newPitch[1], 'u', glyphName[3])
-            self._generate_nc(el, newPitch[0], newPitch[1], **glyphVisuals)
+            glyphParams['intm'] = 'u'
+            self._generate_nc(el, newPitch[0], newPitch[1], **glyphParams)
 
         elif glyphName[1] == 'torculus':
-            self._generate_nc(el, glyphOctave, glyphNote, **glyphVisuals)
+            self._generate_nc(el, glyphOctave, glyphNote, **glyphParams)
+
             newPitch = self._findRelativeNote(glyphOctave, glyphNote, 'u', glyphName[2])
-            self._generate_nc(el, newPitch[0], newPitch[1], **glyphVisuals)
+            glyphParams['intm'] = 'u'
+            self._generate_nc(el, newPitch[0], newPitch[1], **glyphParams)
+
             newPitch = self._findRelativeNote(newPitch[0], newPitch[1], 'd', glyphName[3])
-            self._generate_nc(el, newPitch[0], newPitch[1], **glyphVisuals)
+            glyphParams['intm'] = 'd'
+            self._generate_nc(el, newPitch[0], newPitch[1], **glyphParams)
 
         # elif glyphName[1] == 'ancus':
 
@@ -315,28 +301,4 @@ class MeiOutput(object):
         el.addAttribute("lrx", str(ulx + nrows))
         el.addAttribute("lry", str(uly + ncols))
 
-        return el.getId()
-
-        # def _generate_(self, parent):
-        #     el = MeiElement("")
-        #     parent.addChild(el)
-
-        #     # self._generate_(el)
-
-        # def _generate_(self, parent):
-        #     el = MeiElement("")
-        #     parent.addChild(el)
-
-        #     # self._generate_(el)
-
-        # def _generate_(self, parent):
-        #     el = MeiElement("")
-        #     parent.addChild(el)
-
-        #     # self._generate_(el)
-
-        # def _generate_(self, parent):
-        #     el = MeiElement("")
-        #     parent.addChild(el)
-
-        #     # self._generate_(el)
+        return el.getId()   # returns the facsimile reference for neumes, etc.
