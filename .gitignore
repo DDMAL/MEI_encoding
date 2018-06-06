@@ -108,3 +108,4 @@ ignore
 venv*
 file.mei
 main.py
+.DS_Store
