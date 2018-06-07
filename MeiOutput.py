@@ -123,6 +123,8 @@ class MeiOutput(object):
         el = MeiElement("staffDef")
         parent.addChild(el)
 
+        el.addAttribute('n', '1')
+
     def _generate_staff(self, parent, i):
         el = MeiElement("staff")
         parent.addChild(el)
@@ -205,6 +207,55 @@ class MeiOutput(object):
         el = MeiElement("_comment")
         el.setValue(text)
         parent.addChild(el)
+
+    def _generate_neume(self, parent, glyph):
+        el = MeiElement("neume")
+        parent.addChild(el)
+
+        zoneId = self._generate_zone(self.surface, glyph['glyph']['bounding_box'])
+        el.addAttribute('facs', zoneId)
+
+        name = glyph['glyph']['name'].split('.')
+        ncParams = {
+            'pname': glyph['pitch']['note'],   # [a, b, c, d, e, f, g, unknown]
+            'oct': glyph['pitch']['octave'],   # [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+            'intm': False,              # [u, d, s, n, su, sd]  up, down, same, unknown, same or up, same or down
+            'liques': False,            # [Bool] elongated or curved stroke
+            'con': False,               # [g, l, e] gapped, looped, extended  (connected to previous nc)
+            'curve': False,             # [a, c] anticlockwise, clockwise
+            'angled': False,            # [Bool]
+            'hooked': False,            # [Bool]
+            'ligature': False,          # [Bool]
+            'tilt': False,              # [n, ne, e, se, s, sw, w, nw] direction of pen stroke
+        }
+        nameParams = self._categorize_name(name)
+
+        # generate neume components
+        self._generate_nc(el, ncParams)  # initial note
+        if nameParams['contours'][0]:   # related notes
+            for i in range(len(nameParams['contours'])):
+                self._generate_nc(el, self._new_ncParams(i, nameParams, ncParams))
+
+    def _generate_nc(self, parent, kwargs):
+        el = MeiElement("nc")
+        parent.addChild(el)
+
+        for name, value in kwargs.items():
+            if kwargs[name]:
+                el.addAttribute(name, value)
+
+    def _generate_zone(self, parent, bounding_box):
+        (nrows, ulx, uly, ncols) = bounding_box.values()
+
+        el = MeiElement("zone")
+        parent.addChild(el)
+
+        el.addAttribute("ulx", str(ulx))
+        el.addAttribute("uly", str(uly))
+        el.addAttribute("lrx", str(ulx + nrows))
+        el.addAttribute("lry", str(uly + ncols))
+
+        return el.getId()   # returns the facsimile reference for neumes, etc.
 
     def _findRelativeNote(self, startNote, startOctave, contour, interval):
         # print(startOctave, startNote, contour, interval)
@@ -318,55 +369,6 @@ class MeiOutput(object):
 
         return nameParams
 
-    def _generate_neume(self, parent, glyph):
-        el = MeiElement("neume")
-        parent.addChild(el)
-
-        zoneId = self._generate_zone(self.surface, glyph['glyph']['bounding_box'])
-        el.addAttribute('facs', zoneId)
-
-        name = glyph['glyph']['name'].split('.')
-        ncParams = {
-            'pname': glyph['pitch']['note'],   # [a, b, c, d, e, f, g, unknown]
-            'oct': glyph['pitch']['octave'],   # [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-            'intm': False,              # [u, d, s, n, su, sd]  up, down, same, unknown, same or up, same or down
-            'liques': False,            # [Bool] elongated or curved stroke
-            'con': False,               # [g, l, e] gapped, looped, extended  (connected to previous nc)
-            'curve': False,             # [a, c] anticlockwise, clockwise
-            'angled': False,            # [Bool]
-            'hooked': False,            # [Bool]
-            'ligature': False,          # [Bool]
-            'tilt': False,              # [n, ne, e, se, s, sw, w, nw] direction of pen stroke
-        }
-        nameParams = self._categorize_name(name)
-
-        # generate neume components
-        self._generate_nc(el, ncParams)  # initial note
-        if nameParams['contours'][0]:   # related notes
-            for i in range(len(nameParams['contours'])):
-                self._generate_nc(el, self._new_ncParams(i, nameParams, ncParams))
-
-    def _generate_nc(self, parent, kwargs):
-        el = MeiElement("nc")
-        parent.addChild(el)
-
-        for name, value in kwargs.items():
-            if kwargs[name]:
-                el.addAttribute(name, value)
-
-    def _generate_zone(self, parent, bounding_box):
-        (nrows, ulx, uly, ncols) = bounding_box.values()
-
-        el = MeiElement("zone")
-        parent.addChild(el)
-
-        el.addAttribute("ulx", str(ulx))
-        el.addAttribute("uly", str(uly))
-        el.addAttribute("lrx", str(ulx + nrows))
-        el.addAttribute("lry", str(uly + ncols))
-
-        return el.getId()   # returns the facsimile reference for neumes, etc.
-
 
 if __name__ == "__main__":
 
@@ -390,7 +392,7 @@ if __name__ == "__main__":
     mei_string = mei_obj.run()
 
     print("\nFILE COMPLETE:\n")
-    with open("file.mei", "w") as f:
+    with open("output.mei", "w") as f:
         f.write(mei_string)
 
     # print(mei_string, '\n')

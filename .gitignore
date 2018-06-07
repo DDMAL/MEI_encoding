@@ -109,3 +109,4 @@ venv*
 file.mei
 main.py
 .DS_Store
+output.mei
