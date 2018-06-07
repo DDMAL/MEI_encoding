@@ -1,4 +1,6 @@
 from pymei import MeiDocument, MeiElement, documentToText  # , version_info
+import sys
+import json
 
 
 class MeiOutput(object):
@@ -33,22 +35,6 @@ class MeiOutput(object):
         # self._generate_meiCorpus(doc)     # unnecesary
 
         return doc
-
-    def _findRelativeNote(self, startOctave, startNote, contour, interval):
-
-        startOctave = int(startOctave)
-        interval = int(interval) - 1  # because intervals are 1 note off
-
-        if contour == 'u':      # upwards
-            newOctave = startOctave + int((self.SCALE.index(startNote) + interval) / len(self.SCALE))
-            newNote = self.SCALE[(self.SCALE.index(startNote) + interval) % len(self.SCALE)]
-
-        elif contour == 'd':    # downwards
-            newOctave = startOctave - \
-                int((len(self.SCALE) - self.SCALE.index(startNote) - 1 + interval) / len(self.SCALE))
-            newNote = self.SCALE[(self.SCALE.index(startNote) - interval) % len(self.SCALE)]
-
-        return [str(newOctave), newNote]
 
     def _generate_mei(self, parent):
         el = MeiElement("mei")
@@ -206,6 +192,7 @@ class MeiOutput(object):
         parent.addChild(el)
 
         self._generate_syl(el, glyph)
+        self._generate_comment(el, glyph['glyph']['name'])
         self._generate_neume(el, glyph)     # this may need to change
 
     def _generate_syl(self, parent, glyph):
@@ -214,6 +201,123 @@ class MeiOutput(object):
 
         # self._generate_(el)
 
+    def _generate_comment(self, parent, text):
+        el = MeiElement("_comment")
+        el.setValue(text)
+        parent.addChild(el)
+
+    def _findRelativeNote(self, startNote, startOctave, contour, interval):
+        # print(startOctave, startNote, contour, interval)
+
+        startOctave = int(startOctave)
+        interval = int(interval) - 1  # because intervals are 1 note off
+
+        if contour == 'u':      # upwards
+            newOctave = startOctave + int((self.SCALE.index(startNote) + interval) / len(self.SCALE))
+            newNote = self.SCALE[(self.SCALE.index(startNote) + interval) % len(self.SCALE)]
+
+        elif contour == 'd':    # downwards
+            newOctave = startOctave - \
+                int((len(self.SCALE) - self.SCALE.index(startNote) - 1 + interval) / len(self.SCALE))
+            newNote = self.SCALE[(self.SCALE.index(startNote) - interval) % len(self.SCALE)]
+
+        elif contour == 's':   # repetition
+            newOctave = startOctave
+            newNote = startNote
+
+        return [newNote, str(newOctave)]
+
+    def _new_ncParams(self, i, nameParams, ncParams):
+        newPitch = self._findRelativeNote(
+            ncParams['pname'], ncParams['oct'],
+            nameParams['contours'][i], nameParams['intervals'][i])
+
+        ncParams['intm'] = nameParams['contours'][i]
+        ncParams['pname'] = newPitch[0]
+        ncParams['oct'] = newPitch[1]
+
+        return ncParams
+
+    def _categorize_name(self, name):
+        neumeName = name[1]
+        if len(name) < 3:
+            neumeStyle = None
+            neumeMod = None
+            neumeStyle2 = None
+            neumeVars = [None]
+
+        elif name[2] in ['a', 'b']:
+            neumeStyle = name[2]
+            if name[3] in ['flexus', 'resupinus', 'subpunctis', 'repeated']:
+                neumeMod = name[3]
+                if name[4] in ['a', 'b']:
+                    neumeStyle2 = name[4]
+                    neumeVars = name[5:]
+                else:
+                    neumeStyle2 = None
+                    neumeVars = name[4:]
+            else:
+                neumeMod = None
+                neumeStyle2 = None
+                neumeVars = name[3:]
+
+        elif name[2] in ['flexus', 'resupinus', 'subpunctis', 'repeated']:
+            neumeMod = name[2]
+            if name[3] in ['a', 'b']:
+                neumeStyle2 = name[3]
+                neumeVars = name[4:]
+            else:
+                neumeStyle2 = None
+                neumeVars = name[3:]
+
+        else:
+            neumeStyle = None
+            neumeMod = None
+            neumeStyle2 = None
+            neumeVars = name[2:]
+
+        # get contours and intervals
+        if neumeMod or neumeName == 'compound':   # u/d,   u2.d2
+            if neumeMod == 'repeated':
+                neumeContours = neumeVars[0] * ['s']
+                neumeIntervals = neumeVars[0] * [1]
+            else:
+                neumeContours = list(c[0] for c in neumeVars)
+                neumeIntervals = list(int(''.join(c[1:])) for c in neumeVars)
+
+        elif not neumeName == 'punctum':          # !u/d,  2.2
+            if neumeName == 'pes':
+                neumeContours = ['u']
+            elif neumeName == 'clivis':
+                neumeContours = ['d']
+            elif neumeName == 'pressus':
+                neumeContours = ['s', 'd']
+            elif neumeName == 'scandicus':
+                neumeContours = ['u', 'u']
+            elif neumeName == 'climacus':
+                neumeContours = ['d', 'd']
+            elif neumeName == 'torculus':
+                neumeContours = ['u', 'd']
+            elif neumeName == 'porrectus':
+                neumeContours = ['d', 'u']
+
+            neumeIntervals = list(int(i) for i in neumeVars)
+
+        else:
+            neumeContours = [None]
+            neumeIntervals = [None]
+
+        nameParams = {
+            'name': neumeName,
+            'style': neumeStyle,
+            'mod': neumeMod,
+            'style2': neumeStyle2,
+            'contours': neumeContours,
+            'intervals': neumeIntervals,
+        }
+
+        return nameParams
+
     def _generate_neume(self, parent, glyph):
         el = MeiElement("neume")
         parent.addChild(el)
@@ -221,118 +325,34 @@ class MeiOutput(object):
         zoneId = self._generate_zone(self.surface, glyph['glyph']['bounding_box'])
         el.addAttribute('facs', zoneId)
 
-        glyphName = glyph['glyph']['name'].split('.')
-        glyphOctave = glyph['pitch']['octave']
-        glyphNote = glyph['pitch']['note']
-        glyphParams = {
-            'diagonalright': False,
-            'con': False,               # can contain 'g' or 'l'
-            'intm': False,              # can contain 'u' or 'd'
+        name = glyph['glyph']['name'].split('.')
+        ncParams = {
+            'pname': glyph['pitch']['note'],   # [a, b, c, d, e, f, g, unknown]
+            'oct': glyph['pitch']['octave'],   # [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+            'intm': False,              # [u, d, s, n, su, sd]  up, down, same, unknown, same or up, same or down
+            'liques': False,            # [Bool] elongated or curved stroke
+            'con': False,               # [g, l, e] gapped, looped, extended  (connected to previous nc)
+            'curve': False,             # [a, c] anticlockwise, clockwise
+            'angled': False,            # [Bool]
+            'hooked': False,            # [Bool]
+            'ligature': False,          # [Bool]
+            'tilt': False,              # [n, ne, e, se, s, sw, w, nw] direction of pen stroke
         }
+        nameParams = self._categorize_name(name)
 
-        if glyphName[1] == 'punctum':
-            self._generate_nc(el, glyphOctave, glyphNote, **glyphParams)
+        # generate neume components
+        self._generate_nc(el, ncParams)  # initial note
+        if nameParams['contours'][0]:   # related notes
+            for i in range(len(nameParams['contours'])):
+                self._generate_nc(el, self._new_ncParams(i, nameParams, ncParams))
 
-        elif glyphName[1] == 'virga':
-            self._generate_nc(el, glyphOctave, glyphNote, **glyphParams)
-
-        # elif glyphName[1] == 'cephalicus':
-        #     self._generate_nc(el, glyphOctave, glyphNote, **glyphParams)
-
-        #     newPitch = self._findRelativeNote(glyphOctave, glyphNote, 'd', glyphName[2])
-        #     glyphParams['intm'] = 'd'
-        #     self._generate_nc(el, newPitch[0], newPitch[1], **glyphParams)
-
-        elif glyphName[1] == 'clivis':
-            self._generate_nc(el, glyphOctave, glyphNote, **glyphParams)
-
-            newPitch = self._findRelativeNote(glyphOctave, glyphNote, 'd', glyphName[2])
-            glyphParams['intm'] = 'd'
-            self._generate_nc(el, newPitch[0], newPitch[1], **glyphParams)
-
-        # elif glyphName[1] == 'epiphonus':
-        #     self._generate_nc(el, glyphOctave, glyphNote, **glyphParams)
-
-        #     newPitch = self._findRelativeNote(glyphOctave, glyphNote, 'u', glyphName[2])
-        #     glyphParams['intm'] = 'u'
-        #     self._generate_nc(el, newPitch[0], newPitch[1], **glyphParams)
-
-        elif glyphName[1] == 'podatus':
-            self._generate_nc(el, glyphOctave, glyphNote, **glyphParams)
-
-            newPitch = self._findRelativeNote(glyphOctave, glyphNote, 'u', glyphName[2])
-            glyphParams['intm'] = 'u'
-            self._generate_nc(el, newPitch[0], newPitch[1], **glyphParams)
-
-        elif glyphName[1] == 'porrectus':
-            self._generate_nc(el, glyphOctave, glyphNote, **glyphParams)
-
-            newPitch = self._findRelativeNote(glyphOctave, glyphNote, 'd', glyphName[2])
-            glyphParams['intm'] = 'd'
-            self._generate_nc(el, newPitch[0], newPitch[1], **glyphParams)
-
-            newPitch = self._findRelativeNote(newPitch[0], newPitch[1], 'u', glyphName[3])
-            glyphParams['intm'] = 'u'
-            self._generate_nc(el, newPitch[0], newPitch[1], **glyphParams)
-
-        # elif glyphName[1] == 'salicus':
-        #     self._generate_nc(el, glyphOctave, glyphNote, **glyphParams)
-
-        #     newPitch = self._findRelativeNote(glyphOctave, glyphNote, 'u', glyphName[2])
-        #     glyphParams['intm'] = 'u'
-        #     self._generate_nc(el, newPitch[0], newPitch[1], **glyphParams)
-
-        #     newPitch = self._findRelativeNote(newPitch[0], newPitch[1], 'u', glyphName[3])
-        #     glyphParams['intm'] = 'u'
-        #     self._generate_nc(el, newPitch[0], newPitch[1], **glyphParams)
-
-        elif glyphName[1] == 'scandicus':
-            self._generate_nc(el, glyphOctave, glyphNote, **glyphParams)
-
-            newPitch = self._findRelativeNote(glyphOctave, glyphNote, 'u', glyphName[2])
-            glyphParams['intm'] = 'u'
-            self._generate_nc(el, newPitch[0], newPitch[1], **glyphParams)
-
-            newPitch = self._findRelativeNote(newPitch[0], newPitch[1], 'u', glyphName[3])
-            glyphParams['intm'] = 'u'
-            self._generate_nc(el, newPitch[0], newPitch[1], **glyphParams)
-
-        elif glyphName[1] == 'torculus':
-            self._generate_nc(el, glyphOctave, glyphNote, **glyphParams)
-
-            newPitch = self._findRelativeNote(glyphOctave, glyphNote, 'u', glyphName[2])
-            glyphParams['intm'] = 'u'
-            self._generate_nc(el, newPitch[0], newPitch[1], **glyphParams)
-
-            newPitch = self._findRelativeNote(newPitch[0], newPitch[1], 'd', glyphName[3])
-            glyphParams['intm'] = 'd'
-            self._generate_nc(el, newPitch[0], newPitch[1], **glyphParams)
-
-        # elif glyphName[1] == 'ancus':
-        #     self._generate_nc(el, glyphOctave, glyphNote, **glyphParams)
-
-        #     newPitch = self._findRelativeNote(glyphOctave, glyphNote, 'd', glyphName[2])
-        #     glyphParams['intm'] = 'd'
-        #     self._generate_nc(el, newPitch[0], newPitch[1], **glyphParams)
-
-        #     newPitch = self._findRelativeNote(newPitch[0], newPitch[1], 'd', glyphName[3])
-        #     glyphParams['intm'] = 'd'
-        #     self._generate_nc(el, newPitch[0], newPitch[1], **glyphParams)
-
-    def _generate_nc(self, parent, octave, pname, **kwargs):
-        x = 29+3
+    def _generate_nc(self, parent, kwargs):
         el = MeiElement("nc")
         parent.addChild(el)
 
-        if kwargs['diagonalright']:
-            el.addAttribute("diagonalright", kwargs['diagonalright'])
-        if kwargs['con']:
-            el.addAttribute("con", kwargs['con'])
-        if kwargs['intm']:
-            el.addAttribute("intm", kwargs['intm'])
-
-        el.addAttribute("oct", octave)
-        el.addAttribute("pname", pname)
+        for name, value in kwargs.items():
+            if kwargs[name]:
+                el.addAttribute(name, value)
 
     def _generate_zone(self, parent, bounding_box):
         (nrows, ulx, uly, ncols) = bounding_box.values()
@@ -346,3 +366,31 @@ class MeiOutput(object):
         el.addAttribute("lry", str(uly + ncols))
 
         return el.getId()   # returns the facsimile reference for neumes, etc.
+
+
+if __name__ == "__main__":
+
+    if len(sys.argv) == 4:
+        (tmp, inJSOMR, version, image) = sys.argv
+    elif len(sys.argv) == 3:
+        (tmp, inJSOMR, image) = sys.argv
+        version = 'N'
+    else:
+        print("incorrect usage\npython3 main.py path (version)")
+        quit()
+
+    with open(inJSOMR, 'r') as file:
+        jsomr = json.loads(file.read())
+
+    kwargs = {
+
+    }
+
+    mei_obj = MeiOutput(jsomr, version, image, **kwargs)
+    mei_string = mei_obj.run()
+
+    print("\nFILE COMPLETE:\n")
+    with open("file.mei", "w") as f:
+        f.write(mei_string)
+
+    # print(mei_string, '\n')
