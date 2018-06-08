@@ -136,7 +136,10 @@ class MeiOutput(object):
         el = MeiElement("staffDef")
         parent.addChild(el)
 
+        # FIX HARDCODING
         el.addAttribute('n', '1')
+        el.addAttribute('lines', '4')
+        el.addAttribute('notationtype', 'neume')
 
     def _generate_staff(self, parent, i):
         el = MeiElement("staff")
@@ -176,6 +179,7 @@ class MeiOutput(object):
         zoneId = self._generate_zone(self.surface, glyph['glyph']['bounding_box'])
         el.addAttribute('facs', zoneId)
         el.addAttribute('shape', glyph['glyph']['name'].split('.')[1].upper())
+        el.addAttribute('line', glyph['pitch']['strt_pos'])
 
     def _generate_custos(self, parent, glyph):
         el = MeiElement("custos")
@@ -206,7 +210,7 @@ class MeiOutput(object):
         el = MeiElement("syllable")
         parent.addChild(el)
 
-        self._generate_syl(el, glyph)
+        # self._generate_syl(el, glyph)
         self._generate_comment(el, glyph['glyph']['name'])
         self._generate_neume(el, glyph)     # this may need to change
 
@@ -265,8 +269,8 @@ class MeiOutput(object):
 
         el.addAttribute("ulx", str(ulx))
         el.addAttribute("uly", str(uly))
-        el.addAttribute("lrx", str(ulx + nrows))
-        el.addAttribute("lry", str(uly + ncols))
+        el.addAttribute("lrx", str(ulx + ncols))
+        el.addAttribute("lry", str(uly + nrows))
 
         return el.getId()   # returns the facsimile reference for neumes, etc.
 
