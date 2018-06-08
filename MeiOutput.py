@@ -7,11 +7,21 @@ class MeiOutput(object):
 
     SCALE = ['a', 'b', 'c', 'd', 'e', 'f', 'g']
 
-    def __init__(self, incoming_data, version, image, **kwargs):
+    CONTOURS = {
+        'pes': ['u'],
+        'clivis': ['d'],
+        'pressus': ['s', 'd'],
+        'scandicus': ['u', 'u'],
+        'climacus': ['d', 'd'],
+        'torculus': ['u', 'd'],
+        'porrectus': ['d', 'u'],
+    }
+
+    def __init__(self, incoming_data, version, **kwargs):
         self.incoming_data = incoming_data
         self.version = version
         self.surface = 0
-        self.original_image = image
+        self.original_image = ''
 
     def run(self):
         # print("version info", version_info)
@@ -19,6 +29,9 @@ class MeiOutput(object):
             return self._conversion()
         else:
             print('not valid MEI version')
+
+    def add_Image(self, image):
+        self.original_image = image
 
     def _conversion(self):
         print('begin conversion')
@@ -328,7 +341,7 @@ class MeiOutput(object):
             neumeVars = name[2:]
 
         # get contours and intervals
-        if neumeMod or neumeName == 'compound':   # u/d,   u2.d2
+        if neumeMod or neumeName == 'compound':   # explicit contours,      u2.d2
             if neumeMod == 'repeated':
                 neumeContours = neumeVars[0] * ['s']
                 neumeIntervals = neumeVars[0] * [1]
@@ -336,22 +349,8 @@ class MeiOutput(object):
                 neumeContours = list(c[0] for c in neumeVars)
                 neumeIntervals = list(int(''.join(c[1:])) for c in neumeVars)
 
-        elif not neumeName == 'punctum':          # !u/d,  2.2
-            if neumeName == 'pes':
-                neumeContours = ['u']
-            elif neumeName == 'clivis':
-                neumeContours = ['d']
-            elif neumeName == 'pressus':
-                neumeContours = ['s', 'd']
-            elif neumeName == 'scandicus':
-                neumeContours = ['u', 'u']
-            elif neumeName == 'climacus':
-                neumeContours = ['d', 'd']
-            elif neumeName == 'torculus':
-                neumeContours = ['u', 'd']
-            elif neumeName == 'porrectus':
-                neumeContours = ['d', 'u']
-
+        elif neumeName in self.CONTOURS:          # predefined contours,    2.2.3
+            neumeContours = self.CONTOURS[neumeName]
             neumeIntervals = list(int(i) for i in neumeVars)
 
         else:
@@ -377,6 +376,10 @@ if __name__ == "__main__":
     elif len(sys.argv) == 3:
         (tmp, inJSOMR, image) = sys.argv
         version = 'N'
+    elif len(sys.argv) == 2:
+        (tmp, inJSOMR) = sys.argv
+        version = 'N'
+        image = None
     else:
         print("incorrect usage\npython3 main.py path (version)")
         quit()
@@ -388,7 +391,9 @@ if __name__ == "__main__":
 
     }
 
-    mei_obj = MeiOutput(jsomr, version, image, **kwargs)
+    mei_obj = MeiOutput(jsomr, version, **kwargs)
+    if image:
+        mei_obj.add_Image(image)
     mei_string = mei_obj.run()
 
     print("\nFILE COMPLETE:\n")
