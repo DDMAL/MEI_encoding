@@ -121,10 +121,8 @@ class MeiOutput(object):
         parent.addChild(el)
 
         # find number of staves
-        numStaves = int(self.incoming_data[len(
-            self.incoming_data) - 1]['pitch']['staff'])
-        for i in list(range(numStaves)):
-            self._generate_staff(el, i)     # generate multiple staves
+        for s in self.incoming_data['staves']:
+            self._generate_staff(el, s)     # generate multiple staves
 
     def _generate_staffGrp(self, parent):
         el = MeiElement("staffGrp")
@@ -141,11 +139,14 @@ class MeiOutput(object):
         el.addAttribute('lines', '4')
         el.addAttribute('notationtype', 'neume')
 
-    def _generate_staff(self, parent, i):
+    def _generate_staff(self, parent, staff):
         el = MeiElement("staff")
         parent.addChild(el)
 
-        el.addAttribute('n', str(i + 1))
+        zoneId = self._generate_zone(self.surface, staff['bounding_box'])
+        el.addAttribute('facs', zoneId)
+        el.addAttribute('n', str(staff['staff_no']))
+        el.addAttribute('lines', str(staff['num_lines']))
 
         self._generate_layer(el)
         # neume only get 1 layer per staff, worth verifying later
@@ -156,11 +157,10 @@ class MeiOutput(object):
 
         # for each glyph in this staff, make a syllable
         localGlyphs = list(filter(lambda g: g['pitch']['staff'] ==
-                                  el.getParent().getAttribute('n').value, self.incoming_data))
+                                  el.getParent().getAttribute('n').value, self.incoming_data['glyphs']))
 
         for g in localGlyphs:
             glyphName = g['glyph']['name'].split('.')
-
             if glyphName[0] == 'clef':
                 self._generate_clef(el, g)
             elif glyphName[0] == 'custos':
@@ -262,6 +262,7 @@ class MeiOutput(object):
                 el.addAttribute(name, value)
 
     def _generate_zone(self, parent, bounding_box):
+
         (nrows, ulx, uly, ncols) = bounding_box.values()
 
         el = MeiElement("zone")
@@ -331,11 +332,12 @@ class MeiOutput(object):
 
         elif name[2] in ['flexus', 'resupinus', 'subpunctis', 'repeated']:
             neumeMod = name[2]
+            neumeStyle2 = None
             if name[3] in ['a', 'b']:
-                neumeStyle2 = name[3]
+                neumeStyle = name[3]
                 neumeVars = name[4:]
             else:
-                neumeStyle2 = None
+                neumeStyle = None
                 neumeVars = name[3:]
 
         else:
@@ -356,6 +358,9 @@ class MeiOutput(object):
         elif neumeName in self.CONTOURS:          # predefined contours,    2.2.3
             neumeContours = self.CONTOURS[neumeName]
             neumeIntervals = list(int(i) for i in neumeVars)
+            for i, c in enumerate(neumeContours):   # if missing unison intervals
+                if c == 's':
+                    neumeIntervals.insert(0, 1)
 
         else:
             neumeContours = [None]
