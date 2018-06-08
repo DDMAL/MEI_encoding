@@ -244,6 +244,8 @@ class MeiOutput(object):
             'hooked': False,            # [Bool]
             'ligature': False,          # [Bool]
             'tilt': False,              # [n, ne, e, se, s, sw, w, nw] direction of pen stroke
+
+            'clef': glyph['pitch']['clef'].split('.')[1]    # don't atatch, just for octave calculating
         }
         nameParams = self._categorize_name(name)
 
@@ -258,7 +260,11 @@ class MeiOutput(object):
         parent.addChild(el)
 
         for name, value in kwargs.items():
-            if kwargs[name]:
+            if name == 'clef':
+                pass
+            elif name == 'oct':  # this is a super lazy fix...
+                el.addAttribute(name, str(int(value) - 1))
+            elif kwargs[name]:
                 el.addAttribute(name, value)
 
     def _generate_zone(self, parent, bounding_box):
@@ -275,20 +281,25 @@ class MeiOutput(object):
 
         return el.getId()   # returns the facsimile reference for neumes, etc.
 
-    def _findRelativeNote(self, startNote, startOctave, contour, interval):
+    def _findRelativeNote(self, startNote, startOctave, contour, interval, clef):
         # print(startOctave, startNote, contour, interval)
 
         startOctave = int(startOctave)
         interval = int(interval) - 1  # because intervals are 1 note off
 
+        # rotate scale based on clef
+        rot = self.SCALE.index(clef)
+        SCALE = self.SCALE[rot:] + self.SCALE[:rot]
+
         if contour == 'u':      # upwards
-            newOctave = startOctave + int((self.SCALE.index(startNote) + interval) / len(self.SCALE))
-            newNote = self.SCALE[(self.SCALE.index(startNote) + interval) % len(self.SCALE)]
+            newOctave = startOctave + \
+                int((SCALE.index(startNote) + interval) / len(SCALE))
+            newNote = SCALE[(SCALE.index(startNote) + interval) % len(SCALE)]
 
         elif contour == 'd':    # downwards
             newOctave = startOctave - \
-                int((len(self.SCALE) - self.SCALE.index(startNote) - 1 + interval) / len(self.SCALE))
-            newNote = self.SCALE[(self.SCALE.index(startNote) - interval) % len(self.SCALE)]
+                int((len(SCALE) - SCALE.index(startNote) - 1 + interval) / len(SCALE))
+            newNote = SCALE[(SCALE.index(startNote) - interval) % len(SCALE)]
 
         elif contour == 's':   # repetition
             newOctave = startOctave
@@ -298,8 +309,11 @@ class MeiOutput(object):
 
     def _new_ncParams(self, i, nameParams, ncParams):
         newPitch = self._findRelativeNote(
-            ncParams['pname'], ncParams['oct'],
-            nameParams['contours'][i], nameParams['intervals'][i])
+            ncParams['pname'],
+            ncParams['oct'],
+            nameParams['contours'][i],
+            nameParams['intervals'][i],
+            ncParams['clef'])
 
         ncParams['intm'] = nameParams['contours'][i]
         ncParams['pname'] = newPitch[0]
