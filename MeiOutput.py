@@ -322,6 +322,7 @@ class MeiOutput(object):
         return ncParams
 
     def _categorize_name(self, name):
+        # print(name)
         neumeName = name[1]
         if len(name) < 3:
             neumeStyle = None
@@ -363,8 +364,8 @@ class MeiOutput(object):
         # get contours and intervals
         if neumeMod or neumeName == 'compound':   # explicit contours,      u2.d2
             if neumeMod == 'repeated':
-                neumeContours = neumeVars[0] * ['s']
-                neumeIntervals = neumeVars[0] * [1]
+                neumeContours = int(neumeVars[0]) * ['s']
+                neumeIntervals = int(neumeVars[0]) * [1]
             else:
                 neumeContours = list(c[0] for c in neumeVars)
                 neumeIntervals = list(int(''.join(c[1:])) for c in neumeVars)
