@@ -149,18 +149,19 @@ class MeiOutput(object):
         el.addAttribute('lines', str(staff['num_lines']))
 
         self._generate_layer(el)
-        # neume only get 1 layer per staff, worth verifying later
 
     def _generate_layer(self, parent):
         el = MeiElement("layer")
         parent.addChild(el)
 
-        # for each glyph in this staff, make a syllable
-        localGlyphs = list(filter(lambda g: g['pitch']['staff'] ==
-                                  el.getParent().getAttribute('n').value, self.incoming_data['glyphs']))
-
-        for g in localGlyphs:
+        # for each non-skip glyph in this staff
+        staffGlyphs = list(filter(lambda g: g['pitch']['staff'] ==
+                                  el.getParent().getAttribute('n').value
+                                  and g['glyph']['name'].split('.')[0] != 'skip',
+                                  self.incoming_data['glyphs']))
+        for g in staffGlyphs:
             glyphName = g['glyph']['name'].split('.')
+            # print(glyphName)
             if glyphName[0] == 'clef':
                 self._generate_clef(el, g)
             elif glyphName[0] == 'custos':
@@ -204,7 +205,7 @@ class MeiOutput(object):
 
         zoneId = self._generate_zone(self.surface, glyph['glyph']['bounding_box'])
         el.addAttribute('facs', zoneId)
-        el.addAttribute("type", glyph['glyph']['name'].split('.')[1])
+        el.addAttribute("accid", glyph['glyph']['name'].split('.')[1])
 
     def _generate_syllable(self, parent, glyph):
         el = MeiElement("syllable")
