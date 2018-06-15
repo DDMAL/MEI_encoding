@@ -1,4 +1,5 @@
 from pymei import MeiDocument, MeiElement, documentToText  # , version_info
+# maybe need XMLImport, xmlExport instead of docToText
 import sys
 import json
 
@@ -17,9 +18,10 @@ class MeiOutput(object):
         'porrectus': ['d', 'u'],
     }
 
-    def __init__(self, incoming_data, version, **kwargs):
+    def __init__(self, incoming_data, version, simple, **kwargs):
         self.incoming_data = incoming_data
         self.version = version
+        self.simple = simple
         self.surface = 0
         self.original_image = ''
 
@@ -159,7 +161,13 @@ class MeiOutput(object):
                                   el.getParent().getAttribute('n').value
                                   and g['glyph']['name'].split('.')[0] != 'skip',
                                   self.incoming_data['glyphs']))
-        for g in staffGlyphs:
+
+        staffNeumes = list(filter(lambda g: g['glyph']['name'].split('.')[0] == 'neume',
+                                  staffGlyphs))
+        staffNotNeumes = list(filter(lambda g: g['glyph']['name'].split('.')[0] == 'neume',
+                                     staffGlyphs))
+
+        for g in staffNotNeumes:
             glyphName = g['glyph']['name'].split('.')
             # print(glyphName)
             if glyphName[0] == 'clef':
@@ -168,10 +176,16 @@ class MeiOutput(object):
                 self._generate_custos(el, g)
             elif glyphName[0] == 'division':
                 self._generate_division(el, g)
-            elif glyphName[0] == 'accidental':
+            elif glyphName[0] == 'accid':
                 self._generate_accidental(el, g)
-            else:
-                self._generate_syllable(el, g)
+
+        if not self.simple:
+            for n in staffNeumes:
+                glyphName = g['glyph']['name'].split('.')
+                self._generate_syl(el, g)
+        else:
+            staffNeumeGroups = groupSimpleNeumes(staffNeumes, 20, 10)
+            print(staffNeumeGroups, '\n')
 
     def _generate_clef(self, parent, glyph):
         el = MeiElement("clef")
@@ -394,19 +408,34 @@ class MeiOutput(object):
         return nameParams
 
 
+def groupSimpleNeumes(glyphs, max_distance, max_size):
+    # input a horizontal staff of neumes
+    # output grouped neume components
+
+    centers = list(g['glyph']['bounding_box']['ulx'] + g['glyph']['bounding_box']['ncols'] / 2 for g in glyphs)
+    neighborDistances = getNeighbourDistances(centers)
+
+    # print(list(g['glyph']['name'] for g in glyphs))
+    # for i, g in enumerate(glyphs):
+
+    return neighborDistances
+
+
+def getNeighbourDistances(centers):
+    return list([x - centers[i], centers[i + 2] - x] for i, x in enumerate(centers[1:-1]))
+
+
 if __name__ == "__main__":
 
     if len(sys.argv) == 4:
-        (tmp, inJSOMR, version, image) = sys.argv
-    elif len(sys.argv) == 3:
-        (tmp, inJSOMR, image) = sys.argv
+        (tmp, inJSOMR, simple, image) = sys.argv
         version = 'N'
-    elif len(sys.argv) == 2:
-        (tmp, inJSOMR) = sys.argv
+    elif len(sys.argv) == 3:
+        (tmp, inJSOMR, simple) = sys.argv
         version = 'N'
         image = None
     else:
-        print("incorrect usage\npython3 main.py path (version)")
+        print("incorrect usage\npython3 main.py (simple neumes) (image/path)")
         quit()
 
     with open(inJSOMR, 'r') as file:
@@ -416,7 +445,8 @@ if __name__ == "__main__":
 
     }
 
-    mei_obj = MeiOutput(jsomr, version, **kwargs)
+    mei_obj = MeiOutput(jsomr, version, simple, **kwargs)
+
     if image:
         mei_obj.add_Image(image)
     mei_string = mei_obj.run()
