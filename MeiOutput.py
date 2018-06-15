@@ -181,11 +181,51 @@ class MeiOutput(object):
 
         if not self.simple:
             for n in staffNeumes:
-                glyphName = g['glyph']['name'].split('.')
-                self._generate_syl(el, g)
+                self._generate_syllable(el, n)
         else:
-            staffNeumeGroups = groupSimpleNeumes(staffNeumes, 20, 10)
-            print(staffNeumeGroups, '\n')
+            avP = averagePunctum(list(filter(lambda g: g['glyph']['name'] == 'neume.punctum',
+                                             self.incoming_data['glyphs'])))
+            staffNeumeGroups = groupSimpleNeumes(staffNeumes, int(avP * 0.3), 8)    # 60% the width of a punctum, max 8 neume componenets attached
+            for n in staffNeumeGroups:
+                self._generate_simple_syllable(el, n)
+            # print(staffNeumeGroups, '\n')
+
+    def _generate_simple_syllable(self, parent, glyphs):
+        el = MeiElement("syllable")
+        parent.addChild(el)
+
+        # self._generate_syl(el, glyph)
+        self._generate_comment(el, ', '.join('.'.join(n['glyph']['name'].split('.')[1:]) for n in glyphs))
+        self._generate_simple_neume(el, glyphs)
+
+    def _generate_simple_neume(self, parent, glyphs):
+        el = MeiElement("neume")
+        parent.addChild(el)
+
+        # zoneId = self._generate_zone(self.surface, glyphs['glyph']['bounding_box'])
+        # el.addAttribute('facs', zoneId)
+
+        # ncParams = {
+        #     'pname': glyph['pitch']['note'],   # [a, b, c, d, e, f, g, unknown]
+        #     'oct': glyph['pitch']['octave'],   # [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        #     'intm': False,              # [u, d, s, n, su, sd]  up, down, same, unknown, same or up, same or down
+        #     'liques': False,            # [Bool] elongated or curved stroke
+        #     'con': False,               # [g, l, e] gapped, looped, extended  (connected to previous nc)
+        #     'curve': False,             # [a, c] anticlockwise, clockwise
+        #     'angled': False,            # [Bool]
+        #     'hooked': False,            # [Bool]
+        #     'ligature': False,          # [Bool]
+        #     'tilt': False,              # [n, ne, e, se, s, sw, w, nw] direction of pen stroke
+
+        #     'clef': glyph['pitch']['clef'].split('.')[1]    # don't atatch, just for octave calculating
+        # }
+        # nameParams = self._categorize_name(name)
+
+        # # generate neume components
+        # self._generate_nc(el, ncParams)  # initial note
+        # if nameParams['contours'][0]:   # related notes
+        #     for i in range(len(nameParams['contours'])):
+        #         self._generate_nc(el, self._new_ncParams(i, nameParams, ncParams))
 
     def _generate_clef(self, parent, glyph):
         el = MeiElement("clef")
@@ -408,21 +448,100 @@ class MeiOutput(object):
         return nameParams
 
 
-def groupSimpleNeumes(glyphs, max_distance, max_size):
+def averagePunctum(punctums):
+    # get average width of all punctums on a page
+    # as a reference length for groupings
+    edges = getEdges(punctums)
+    widths = list(e[1] - e[0] for e in edges)
+    avg = int(sum(widths) / len(widths))
+    return avg
+
+
+def groupSimpleNeumes(neumes, max_distance, max_size):
     # input a horizontal staff of neumes
     # output grouped neume components
 
-    centers = list(g['glyph']['bounding_box']['ulx'] + g['glyph']['bounding_box']['ncols'] / 2 for g in glyphs)
-    neighborDistances = getNeighbourDistances(centers)
+    groupedNeumes = list([n] for n in neumes)
+    edges = getEdges(neumes)
+    numSimpleNeumes = len(groupedNeumes)
 
-    # print(list(g['glyph']['name'] for g in glyphs))
-    # for i, g in enumerate(glyphs):
+    # basic neume component grouping rules
+    autoMerge('inclinatum', 'left', groupedNeumes, edges)
+    autoMerge('oblique', 'right', groupedNeumes, edges)
 
-    return neighborDistances
+    autoMergeIf(max_distance, max_size, groupedNeumes, edges, getEdgeDistance(edges))
+
+    printNeumeGroups(groupedNeumes)
+
+    # print(list(g['glyph']['name'] for g in (gg for gg in neumes)))
+    # for i, g in enumerate(neumes):
+    # print(groupedNeumes)
+    return groupedNeumes
 
 
-def getNeighbourDistances(centers):
-    return list([x - centers[i], centers[i + 2] - x] for i, x in enumerate(centers[1:-1]))
+def printNeumeGroups(neumeGroups):
+    print('\n\nStaff')
+    for ng in neumeGroups:
+        print('')
+        for n in ng:
+            print(n['glyph']['name'])
+
+
+def autoMergeIf(pixelDistance, maxSize, neumeGroup, edges, edgeDistances):
+    rangeArray = range(len(neumeGroup) - 2)
+    nudge = -1
+
+    for i in rangeArray:
+        if edgeDistances[i][0] < pixelDistance\
+                and not len(neumeGroup[i - nudge]) + 1 > maxSize:
+            mergeLeft(neumeGroup, edges, i - nudge)
+            nudge += 1
+
+
+def autoMerge(condition, direction, neumeGroup, edges):
+    # merge every simple neume of type condition
+    if direction == 'left':
+        rangeArray = range(len(neumeGroup))
+    else:
+        rangeArray = range(len(neumeGroup) - 1, -1, -1)
+
+    nudge = 0
+    for i in rangeArray:
+        n = neumeGroup[i - nudge][0]
+        name = n['glyph']['name'].split('.')
+
+        if direction == 'left'\
+                and condition in name[1]\
+                and i > 0:
+            mergeLeft(neumeGroup, edges, i - nudge)
+            nudge += 1
+
+        elif direction == 'right'\
+                and condition in name[len(name) - 1]\
+                and i < rangeArray[0]:
+            mergeRight(neumeGroup, edges, i - nudge)
+
+
+def mergeRight(neumes, edges, pos):
+    neumes[pos + 1] = neumes[pos] + neumes[pos + 1]
+    edges[pos + 1][0] = edges[pos][0]
+    del neumes[pos]
+    del edges[pos]
+
+
+def mergeLeft(neumes, edges, pos):
+    neumes[pos - 1] += neumes[pos]
+    edges[pos - 1][1] = edges[pos][1]
+    del neumes[pos]
+    del edges[pos]
+
+
+def getEdges(glyphs):
+    return list([g['glyph']['bounding_box']['ulx'], g['glyph']['bounding_box']['ulx'] + g['glyph']['bounding_box']['ncols']] for g in glyphs)
+
+
+def getEdgeDistance(edges):
+    return list([e[0] - edges[i][1], edges[i + 2][0] - e[1]] for i, e in enumerate(edges[1: -1]))
 
 
 if __name__ == "__main__":
