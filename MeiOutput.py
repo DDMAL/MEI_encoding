@@ -83,8 +83,10 @@ class MeiOutput(object):
         el = MeiElement("surface")
         parent.addChild(el)
 
-        zoneId = self._generate_zone(self.surface, staff['bounding_box'])
-        el.addAttribute('facs', self.incoming_data['page']['bounding_box'])
+        el.addAttribute("ulx", str(self.incoming_data['page']['bounding_box']['ulx']))
+        el.addAttribute("uly", str(self.incoming_data['page']['bounding_box']['uly']))
+        el.addAttribute("lrx", str(self.incoming_data['page']['bounding_box']['ncols']))
+        el.addAttribute("lry", str(self.incoming_data['page']['bounding_box']['nrows']))
 
         self._generate_graphic(el)
         self.surface = el
