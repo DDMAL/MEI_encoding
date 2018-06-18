@@ -83,6 +83,9 @@ class MeiOutput(object):
         el = MeiElement("surface")
         parent.addChild(el)
 
+        zoneId = self._generate_zone(self.surface, staff['bounding_box'])
+        el.addAttribute('facs', self.incoming_data['page']['bounding_box'])
+
         self._generate_graphic(el)
         self.surface = el
 
@@ -546,13 +549,18 @@ def getEdgeDistance(edges):
 
 if __name__ == "__main__":
 
-    if len(sys.argv) == 4:
-        (tmp, inJSOMR, simple, image) = sys.argv
-        version = 'N'
-    elif len(sys.argv) == 3:
+    # if len(sys.argv) == 4:
+    #     (tmp, inJSOMR, simple, image) = sys.argv
+    #     version = 'N'
+    if len(sys.argv) == 3:
         (tmp, inJSOMR, simple) = sys.argv
         version = 'N'
         image = None
+    elif len(sys.argv) == 2:
+        (tmp, inJSOMR) = sys.argv
+        version = 'N'
+        image = None
+        simple = False
     else:
         print("incorrect usage\npython3 main.py (simple neumes) (image/path)")
         quit()
