@@ -207,30 +207,22 @@ class MeiOutput(object):
         el = MeiElement("neume")
         parent.addChild(el)
 
-        # zoneId = self._generate_zone(self.surface, glyphs['glyph']['bounding_box'])
-        # el.addAttribute('facs', zoneId)
+        # generate neume componenets
+        for g in glyphs:
+            self._generate_simple_nc(el, g)
 
-        # ncParams = {
-        #     'pname': glyph['pitch']['note'],   # [a, b, c, d, e, f, g, unknown]
-        #     'oct': glyph['pitch']['octave'],   # [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-        #     'intm': False,              # [u, d, s, n, su, sd]  up, down, same, unknown, same or up, same or down
-        #     'liques': False,            # [Bool] elongated or curved stroke
-        #     'con': False,               # [g, l, e] gapped, looped, extended  (connected to previous nc)
-        #     'curve': False,             # [a, c] anticlockwise, clockwise
-        #     'angled': False,            # [Bool]
-        #     'hooked': False,            # [Bool]
-        #     'ligature': False,          # [Bool]
-        #     'tilt': False,              # [n, ne, e, se, s, sw, w, nw] direction of pen stroke
+    def _generate_simple_nc(self, parent, glyph):
+        el = MeiElement("nc")
+        parent.addChild(el)
 
-        #     'clef': glyph['pitch']['clef'].split('.')[1]    # don't atatch, just for octave calculating
-        # }
-        # nameParams = self._categorize_name(name)
+        name = glyph['glyph']['name'].split('.')
 
-        # # generate neume components
-        # self._generate_nc(el, ncParams)  # initial note
-        # if nameParams['contours'][0]:   # related notes
-        #     for i in range(len(nameParams['contours'])):
-        #         self._generate_nc(el, self._new_ncParams(i, nameParams, ncParams))
+        if len(name) < 3:
+            zoneId = self._generate_zone(self.surface, glyph['glyph']['bounding_box'])
+            el.addAttribute('facs', zoneId)
+
+        el.addAttribute('pname', str(glyph['pitch']['note']))
+        el.addAttribute('oct', str(glyph['pitch']['octave']))
 
     def _generate_clef(self, parent, glyph):
         el = MeiElement("clef")
