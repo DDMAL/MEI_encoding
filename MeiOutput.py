@@ -216,13 +216,71 @@ class MeiOutput(object):
         parent.addChild(el)
 
         name = glyph['glyph']['name'].split('.')
+        zoneId = False
 
+        # if primative, bounding box can be found
         if len(name) < 3:
             zoneId = self._generate_zone(self.surface, glyph['glyph']['bounding_box'])
             el.addAttribute('facs', zoneId)
 
-        el.addAttribute('pname', str(glyph['pitch']['note']))
-        el.addAttribute('oct', str(glyph['pitch']['octave']))
+        # mark primitive types
+        self._generate_simple_nc_type(el, name[1])
+
+        # handle oblique case and get relative pitch
+        if 'oblique' in name[1]:
+            relativePitch = \
+                self._findRelativeNote(glyph['pitch']['note'],
+                                       glyph['pitch']['octave'],
+                                       'd',
+                                       name[1].split('oblique')[1],
+                                       glyph['pitch']['clef'].split('.')[1])
+            el2 = MeiElement("nc")
+            parent.addChild(el2)
+
+            if(zoneId):
+                el2.addAttribute('facs', zoneId)
+            # el2.addAttribute('type', 'obl')
+            el2.addAttribute('con', 'obl')
+            el2.addAttribute('pname', relativePitch[0])
+            el2.addAttribute('oct', str(int(relativePitch[1]) - 1))
+
+        else:
+            relativePitch = [glyph['pitch']['note'], glyph['pitch']['octave']]
+
+        # if not primitive, generate related nc's
+        if not len(name) < 3:
+            self._generate_simple_nc_ext(parent, relativePitch, glyph['pitch']['clef'], name[2:])
+
+        el.addAttribute('pname', glyph['pitch']['note'])
+        el.addAttribute('oct', str(int(glyph['pitch']['octave']) - 1))
+
+    def _generate_simple_nc_ext(self, parent, startPitch, clef, acc):
+        el = MeiElement("nc")
+        parent.addChild(el)
+
+        pitch = self._findRelativeNote(startPitch[0],
+                                       startPitch[1],
+                                       acc[0][0],
+                                       acc[0][1],
+                                       clef.split('.')[1])
+
+        self._generate_simple_nc_type(el, acc[1])
+        el.addAttribute('pname', pitch[0])
+        el.addAttribute('oct', str(int(pitch[1]) - 1))
+
+        if acc[2:]:
+            self._generate_simple_nc_ext(parent, pitch, clef, acc[2:])
+
+    def _generate_simple_nc_type(self, el, name):
+        if 'punctum' in name:
+            # el.addAttribute('type', 'pun')
+            pass
+        elif 'inclinatum' in name:
+            # el.addAttribute('type', 'inc')
+            el.addAttribute('tilt', 'se')
+        elif 'oblique' in name:
+            # el.addAttribute('type', 'obl')
+            pass
 
     def _generate_clef(self, parent, glyph):
         el = MeiElement("clef")
