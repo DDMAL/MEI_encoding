@@ -109,4 +109,7 @@ venv*
 .DS_Store
 .pytest_cache
 output.mei
+
+# Because this file is cached, git.ignoring it makes it
+# invisible to pytests but keeps the file in the repo
 __init__.py
