@@ -370,23 +370,23 @@ class MeiOutput(object):
     # Neume Grouping Utilities
     ############################
 
-    def get_edges(self, glyphs):
+    def _get_edges(self, glyphs):
         return list([g['glyph']['bounding_box']['ulx'], g['glyph']['bounding_box']['ulx'] + g['glyph']['bounding_box']['ncols']] for g in glyphs)
 
-    def get_edge_distance(self, edges):
+    def _get_edge_distance(self, edges):
         return list([e[0] - edges[i][1], edges[i + 2][0] - e[1]] for i, e in enumerate(edges[1: -1]))
 
-    def auto_merge_if(self, pixelDistance, maxSize, neumeGroup, edges, edgeDistances):
+    def _auto_merge_if(self, pixelDistance, maxSize, neumeGroup, edges, edgeDistances):
         rangeArray = range(len(neumeGroup) - 2)
         nudge = -1
 
         for i in rangeArray:
             if edgeDistances[i][0] < pixelDistance\
                     and not len(neumeGroup[i - nudge]) + 1 > maxSize:
-                self.mergeLeft(neumeGroup, edges, i - nudge)
+                self._mergeLeft(neumeGroup, edges, i - nudge)
                 nudge += 1
 
-    def auto_merge(self, condition, direction, neumeGroup, edges):
+    def _auto_merge(self, condition, direction, neumeGroup, edges):
         # merge every neume of type condition
         if direction == 'left':
             rangeArray = range(len(neumeGroup))
@@ -401,21 +401,21 @@ class MeiOutput(object):
             if direction == 'left'\
                     and condition in name[1]\
                     and i > 0:
-                self.mergeLeft(neumeGroup, edges, i - nudge)
+                self._mergeLeft(neumeGroup, edges, i - nudge)
                 nudge += 1
 
             elif direction == 'right'\
                     and condition in name[len(name) - 1]\
                     and i < rangeArray[0]:
-                self.mergeRight(neumeGroup, edges, i - nudge)
+                self._mergeRight(neumeGroup, edges, i - nudge)
 
-    def mergeRight(self, neumes, edges, pos):
+    def _mergeRight(self, neumes, edges, pos):
         neumes[pos + 1] = neumes[pos] + neumes[pos + 1]
         edges[pos + 1][0] = edges[pos][0]
         del neumes[pos]
         del edges[pos]
 
-    def mergeLeft(self, neumes, edges, pos):
+    def _mergeLeft(self, neumes, edges, pos):
         neumes[pos - 1] += neumes[pos]
         edges[pos - 1][1] = edges[pos][1]
         del neumes[pos]
@@ -426,11 +426,11 @@ class MeiOutput(object):
         # output grouped neume components
 
         groupedNeumes = list([n] for n in neumes)
-        edges = self.get_edges(neumes)
+        edges = self._get_edges(neumes)
 
-        self.auto_merge('inclinatum', 'left', groupedNeumes, edges)
-        self.auto_merge('ligature', 'right', groupedNeumes, edges)
-        self.auto_merge_if(max_distance, max_size, groupedNeumes, edges, self.get_edge_distance(edges))
+        self._auto_merge('inclinatum', 'left', groupedNeumes, edges)
+        self._auto_merge('ligature', 'right', groupedNeumes, edges)
+        self._auto_merge_if(max_distance, max_size, groupedNeumes, edges, self._get_edge_distance(edges))
 
         self._print_neume_groups(groupedNeumes)
 
