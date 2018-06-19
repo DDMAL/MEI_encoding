@@ -25,6 +25,9 @@ class MeiOutput(object):
         self.surface = 0
         self.original_image = ''
 
+        self.max_width = 0.3
+        self.max_size = 8
+
     def run(self):
         # print("version info", version_info)
         if self.version == 'N':
@@ -190,8 +193,9 @@ class MeiOutput(object):
         else:
             avP = averagePunctum(list(filter(lambda g: g['glyph']['name'] == 'neume.punctum',
                                              self.incoming_data['glyphs'])))
-            staffNeumeGroups = groupSimpleNeumes(staffNeumes, int(avP * 0.3), 8)    # 60% the width of a punctum, max 8 neume componenets attached
-            for n in staffNeumeGroups:
+            staffNeumeGroups = groupSimpleNeumes(staffNeumes, int(avP * self.max_width), self.max_size)
+
+            for n in staffNeumeGroups:  # this part will change once we get lyric information
                 self._generate_simple_syllable(el, n)
             # print(staffNeumeGroups, '\n')
 
@@ -216,71 +220,60 @@ class MeiOutput(object):
         parent.addChild(el)
 
         name = glyph['glyph']['name'].split('.')
+        currentPitch = [glyph['pitch']['note'], glyph['pitch']['octave'], glyph['pitch']['clef'].split('.')[1]]
+
+        singular = len(name) < 3
         zoneId = False
 
-        # if primative, bounding box can be found
-        if len(name) < 3:
+        # if only one primative, bounding box can be found
+        if singular:
             zoneId = self._generate_zone(self.surface, glyph['glyph']['bounding_box'])
             el.addAttribute('facs', zoneId)
 
-        # mark primitive types
-        self._generate_simple_nc_type(el, name[1])
+        # fill out this primitive's attributes
+        self._complete_primitive(name[1], parent, el, currentPitch)
 
-        # handle oblique case and get relative pitch
-        if 'oblique' in name[1]:
-            relativePitch = \
-                self._findRelativeNote(glyph['pitch']['note'],
-                                       glyph['pitch']['octave'],
-                                       'd',
-                                       name[1].split('oblique')[1],
-                                       glyph['pitch']['clef'].split('.')[1])
-            el2 = MeiElement("nc")
-            parent.addChild(el2)
+        # if multiple primitives, recursively generate nc's in relation to this
+        if not singular:
+            self._generate_simple_nc_ext(parent, self._get_relative_pitch(currentPitch, name[1]), name[2:])
 
-            if(zoneId):
-                el2.addAttribute('facs', zoneId)
-            # el2.addAttribute('type', 'obl')
-            el2.addAttribute('con', 'obl')
-            el2.addAttribute('pname', relativePitch[0])
-            el2.addAttribute('oct', str(int(relativePitch[1]) - 1))
-
+    def _get_relative_pitch(self, pitch, name):
+        if 'ligature' in name:   # if ligature, find/use lower pitch
+            return self._findRelativeNote(pitch, 'd', name.split('ligature')[1])
         else:
-            relativePitch = [glyph['pitch']['note'], glyph['pitch']['octave']]
+            return pitch
 
-        # if not primitive, generate related nc's
-        if not len(name) < 3:
-            self._generate_simple_nc_ext(parent, relativePitch, glyph['pitch']['clef'], name[2:])
-
-        el.addAttribute('pname', glyph['pitch']['note'])
-        el.addAttribute('oct', str(int(glyph['pitch']['octave']) - 1))
-
-    def _generate_simple_nc_ext(self, parent, startPitch, clef, acc):
+    def _generate_simple_nc_ext(self, parent, pitch, acc):
         el = MeiElement("nc")
         parent.addChild(el)
 
-        pitch = self._findRelativeNote(startPitch[0],
-                                       startPitch[1],
-                                       acc[0][0],
-                                       acc[0][1],
-                                       clef.split('.')[1])
+        newPitch = self._findRelativeNote(pitch, acc[0][0], acc[0][1])
+        self._complete_primitive(acc[1], parent, el, newPitch)
 
-        self._generate_simple_nc_type(el, acc[1])
+        if acc[2:]:  # recursive step
+            self._generate_simple_nc_ext(parent, self._get_relative_pitch(newPitch, acc[1]), acc[2:])
+
+    def _complete_primitive(self, name, parent, el, pitch):
         el.addAttribute('pname', pitch[0])
         el.addAttribute('oct', str(int(pitch[1]) - 1))
 
-        if acc[2:]:
-            self._generate_simple_nc_ext(parent, pitch, clef, acc[2:])
-
-    def _generate_simple_nc_type(self, el, name):
         if 'punctum' in name:
-            # el.addAttribute('type', 'pun')
             pass
         elif 'inclinatum' in name:
-            # el.addAttribute('type', 'inc')
             el.addAttribute('tilt', 'se')
-        elif 'oblique' in name:
-            # el.addAttribute('type', 'obl')
-            pass
+        elif 'ligature' in name:
+            el.addAttribute('ligature', 'true')
+
+            # generate second part of ligature
+            el2 = MeiElement("nc")
+            parent.addChild(el2)
+            relativePitch = self._get_relative_pitch(pitch, name)
+
+            if(el.getAttribute('facs')):
+                el2.addAttribute('facs', el.getAttribute('facs').getValue())
+            el2.addAttribute('pname', relativePitch[0])
+            el2.addAttribute('oct', str(int(relativePitch[1]) - 1))
+            el2.addAttribute('ligature', 'true')
 
     def _generate_clef(self, parent, glyph):
         el = MeiElement("clef")
@@ -391,8 +384,10 @@ class MeiOutput(object):
 
         return el.getId()   # returns the facsimile reference for neumes, etc.
 
-    def _findRelativeNote(self, startNote, startOctave, contour, interval, clef):
+    def _findRelativeNote(self, startPitch, contour, interval):
         # print(startOctave, startNote, contour, interval)
+
+        (startNote, startOctave, clef) = startPitch
 
         startOctave = int(startOctave)
         interval = int(interval) - 1  # because intervals are 1 note off
@@ -415,15 +410,13 @@ class MeiOutput(object):
             newOctave = startOctave
             newNote = startNote
 
-        return [newNote, str(newOctave)]
+        return [newNote, str(newOctave), clef]
 
     def _new_ncParams(self, i, nameParams, ncParams):
         newPitch = self._findRelativeNote(
-            ncParams['pname'],
-            ncParams['oct'],
+            [ncParams['pname'], ncParams['oct'], ncParams['clef']],
             nameParams['contours'][i],
-            nameParams['intervals'][i],
-            ncParams['clef'])
+            nameParams['intervals'][i])
 
         ncParams['intm'] = nameParams['contours'][i]
         ncParams['pname'] = newPitch[0]
@@ -522,7 +515,7 @@ def groupSimpleNeumes(neumes, max_distance, max_size):
 
     # basic neume component grouping rules
     autoMerge('inclinatum', 'left', groupedNeumes, edges)
-    autoMerge('oblique', 'right', groupedNeumes, edges)
+    autoMerge('ligature', 'right', groupedNeumes, edges)
 
     autoMergeIf(max_distance, max_size, groupedNeumes, edges, getEdgeDistance(edges))
 
