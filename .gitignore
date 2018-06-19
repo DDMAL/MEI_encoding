@@ -106,7 +106,6 @@ ENV/
 # my ignored stuff
 ignore
 venv*
-file.mei
-main.py
 .DS_Store
+.pytest_cache
 output.mei
