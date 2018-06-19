@@ -109,3 +109,4 @@ venv*
 .DS_Store
 .pytest_cache
 output.mei
+__init__.py
