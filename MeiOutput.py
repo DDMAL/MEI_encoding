@@ -293,9 +293,11 @@ class MeiOutput(object):
             el.addAttribute('facs', zoneId)
 
         else:   # for now, interpolated the bounding_boxes for each nc
-            # print(name)
+
             bounding_boxes = self._calculate_zones(glyph)
+            # bounding_boxes = [glyph['glyph']['bounding_box']] * int(len(name) / 2)
             print(bounding_boxes[0])
+
             zoneId = self._generate_zone(self.surface, bounding_boxes[0])
             el.addAttribute('facs', zoneId)
 
