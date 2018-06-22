@@ -18,6 +18,8 @@ class MeiOutput(object):
         self.max_width = kwargs['max_width']
         self.max_size = kwargs['max_size']
 
+        self.lig_width = 2  # width of ligature in whole punctums, for zone facsimile interpolation
+
     ####################
     # Public Functions
     ####################
@@ -195,7 +197,7 @@ class MeiOutput(object):
                                   self.incoming_data['glyphs']))
 
         staffNeumes = list(filter(lambda g: g['glyph']['name'].split('.')[0] == 'neume', staffGlyphs))
-        staffNotNeumes = list(filter(lambda g: g['glyph']['name'].split('.')[0] == 'neume', staffGlyphs))
+        staffNotNeumes = list(filter(lambda g: g['glyph']['name'].split('.')[0] != 'neume', staffGlyphs))
 
         for g in staffNotNeumes:
             glyphName = g['glyph']['name'].split('.')[0]
@@ -283,9 +285,18 @@ class MeiOutput(object):
         singular = len(name) < 3
         zoneId = False
 
+        print('\n')
         # if only one primative, bounding box can be found
         if singular:
+            print(glyph['glyph']['bounding_box'])
             zoneId = self._generate_zone(self.surface, glyph['glyph']['bounding_box'])
+            el.addAttribute('facs', zoneId)
+
+        else:   # for now, interpolated the bounding_boxes for each nc
+            # print(name)
+            bounding_boxes = self._calculate_zones(glyph)
+            print(bounding_boxes[0])
+            zoneId = self._generate_zone(self.surface, bounding_boxes[0])
             el.addAttribute('facs', zoneId)
 
         # fill out this primitive's attributes
@@ -293,17 +304,21 @@ class MeiOutput(object):
 
         # if multiple primitives, recursively generate nc's in relation to this
         if not singular:
-            self._generate_nc_rec(parent, self._get_relative_pitch(pitch, name[1]), name[2:])
+            self._generate_nc_rec(parent, self._get_relative_pitch(pitch, name[1]), name[2:], bounding_boxes[1:])
 
-    def _generate_nc_rec(self, parent, pitch, acc):
+    def _generate_nc_rec(self, parent, pitch, acc, bounding_boxes):
         el = MeiElement("nc")
         parent.addChild(el)
+
+        print(bounding_boxes[0])
+        zoneId = self._generate_zone(self.surface, bounding_boxes[0])
+        el.addAttribute('facs', zoneId)
 
         newPitch = self._get_new_pitch(pitch, acc[0][0], acc[0][1])
         self._complete_primitive(acc[1], parent, el, newPitch)
 
         if acc[2:]:  # recursive step
-            self._generate_nc_rec(parent, self._get_relative_pitch(newPitch, acc[1]), acc[2:])
+            self._generate_nc_rec(parent, self._get_relative_pitch(newPitch, acc[1]), acc[2:], bounding_boxes[1:])
 
     ########################
     # Generation Utilities
@@ -365,6 +380,147 @@ class MeiOutput(object):
             return self._get_new_pitch(pitch, 'd', name.split('ligature')[1])
         else:
             return pitch
+
+    ##############################
+    # Interpolated CC facsimiles
+    ##############################
+
+    def _calculate_zones(self, glyph):
+
+        bounding_box = glyph['glyph']['bounding_box']
+        num_ncs = int(len(glyph['glyph']['name'].split('.')) / 2)
+
+        name = glyph['glyph']['name'].split('.')
+        nc_names = list(name[2 * i: (2 * i) + 2] for i in range(0, num_ncs))
+
+        contours = self._find_numeric_contours(nc_names)
+        zone_pos = self._find_zone_positions(nc_names, contours)
+
+        x_min, x_max, y_min, y_max = self._calculate_zone_boundaries(nc_names, contours)
+        x_dim = x_max
+        y_dim = y_max - y_min
+        zone_bounding = (x_dim, y_dim)
+
+        bounding_boxes = self._translate_zone_pos_to_bounding_boxes(zone_pos, zone_bounding, bounding_box)
+
+        # print('\n\n')
+
+        return bounding_boxes
+
+    def _translate_zone_pos_to_bounding_boxes(self, zone_pos, zone_bounding, glyph_bounding):
+        bounding_boxes = []
+        x_dim, y_dim = zone_bounding        # x_dim relates to ncols, y_dim relates to nrows
+        ncols = glyph_bounding['ncols']
+        nrows = glyph_bounding['nrows']
+        if not self._zone_pos_positive(zone_pos):
+            zone_pos = self._shift_zone_pos_positive(zone_pos)
+
+        for nc in zone_pos:
+            bounding_box = {
+                'nrows': int(nrows * (nc[3] - nc[1]) / y_dim),
+                'ulx': int(ncols * (nc[0] / x_dim)) + glyph_bounding['ulx'],
+                'uly': int(nrows * (nc[1] / y_dim)) + glyph_bounding['uly'],
+                'ncols': int(ncols * (nc[2] - nc[0]) / x_dim),
+            }
+            bounding_boxes.append(bounding_box)
+
+        #     print(nc)
+        #     print(bounding_box)
+
+        # print(x_dim, y_dim)
+        # print(glyph_bounding['ulx'], glyph_bounding['uly'], glyph_bounding['ncols'], glyph_bounding['nrows'])
+        return bounding_boxes
+
+    def _zone_pos_positive(self, zone_pos):
+        for z in zone_pos:
+            for num in [z[1], z[3]]:
+                if num < 0:
+                    return False
+        return True
+
+    def _shift_zone_pos_positive(self, zone_pos):
+        negative = True
+        while negative:
+            self._shift_zone_pos_by1(zone_pos)
+            if self._zone_pos_positive(zone_pos):
+                negative = False
+
+        return zone_pos
+
+    def _shift_zone_pos_by1(self, zone_pos):
+        for i, z in enumerate(zone_pos):
+            for j, num in enumerate(z):
+                if j == 1 or j == 3:
+                    zone_pos[i][j] += 1
+
+    def _find_zone_positions(self, nc_names, contours):
+        # returns a 'relative' bounding_box for each nc
+        zone_pos = []
+        nudge = 0   # each lig requires a contour indices nudge
+
+        # get relative bounding box of first nc
+        r_ulx = 0
+        r_uly = 0
+
+        if 'ligature' in nc_names[0][1]:
+            r_lrx = r_ulx + self.lig_width
+            r_lry = r_uly - contours[0] + 1
+            nudge += 1
+        else:
+            r_lrx = r_ulx + 1
+            r_lry = r_uly + 1
+        zone_pos.append([r_ulx, r_uly, r_lrx, r_lry])
+
+        # get the rest relative to the first
+        for i, nc in enumerate(nc_names[1:]):
+            r_ulx = r_lrx
+            r_uly = r_lry - contours[i + nudge] - 1
+
+            # find lrx, lry
+            if 'ligature' in nc[1]:
+                r_lrx = r_ulx + self.lig_width
+                r_lry = r_uly - contours[i + nudge]
+                nudge += 1
+            else:
+                r_lrx = r_ulx + 1
+                r_lry = r_uly + 1
+
+            zone_pos.append([r_ulx, r_uly, r_lrx, r_lry])
+
+        return zone_pos
+
+    def _find_numeric_contours(self, nc_names):
+        contours = []
+        for x in nc_names:
+            if 'ligature' in x[1]:
+                contours.append(-(int(x[1].split('ligature')[1]) - 1))
+
+            if x[0] == 'neume':
+                pass
+            elif x[0][0] == 'u':
+                contours.append(int(x[0][1:]) - 1)
+            elif x[0][0] == 'd':
+                contours.append(-(int(x[0][1:]) - 1))
+
+        return contours
+
+    def _calculate_zone_boundaries(self, nc_names, contours):
+        # find boundaries of facs zone relative per glyph
+        # i.e. punctum/inclinatum gets 1x1, ligature# gets 2x#
+
+        x_dim_max = sum((self.lig_width if 'ligature' in x[1] else 1) for x in nc_names)
+
+        y_dim_min = 0
+        y_dim_max = 0
+        flow = 0
+        for n in contours:
+            flow += n
+            if flow < y_dim_min:
+                y_dim_min = flow
+            if flow > y_dim_max:
+                y_dim_max = flow
+
+        return 0, x_dim_max, y_dim_min, y_dim_max + 1
 
     ############################
     # Neume Grouping Utilities
@@ -441,7 +597,7 @@ class MeiOutput(object):
         for ng in neumeGroups:
             print('')
             for n in ng:
-                print(n['glyph']['name'])
+                print(n['glyph']['name'], n['pitch']['note'], n['pitch']['octave'])
 
 
 if __name__ == "__main__":
