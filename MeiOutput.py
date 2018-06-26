@@ -13,6 +13,8 @@ class MeiOutput(object):
         self.version = kwargs['version']
         self.surface = False
         self.original_image = False
+        self.default_clefs = True
+        self.next_clef = None
 
         self.avg_punc_width = self._avg_punctum(list(filter(lambda g: g['glyph']['name'] == 'neume.punctum', incoming_data['glyphs'])))
         self.max_width = kwargs['max_width']
@@ -190,6 +192,15 @@ class MeiOutput(object):
         el = MeiElement("layer")
         parent.addChild(el)
 
+        # default clefs
+        # basically just to force pitches to render
+        # even when clefs arent correctly found
+        if self.default_clefs and self.next_clef != None:
+            nextClef = MeiElement("clef")
+            nextClef.addAttribute('shape', self.next_clef[0])
+            nextClef.addAttribute('line', self.next_clef[1])
+            el.addChild(nextClef)
+
         # for each non-skip glyph in this staff
         staffGlyphs = list(filter(lambda g: g['pitch']['staff'] ==
                                   el.getParent().getAttribute('n').value
@@ -238,10 +249,14 @@ class MeiOutput(object):
         el = MeiElement("clef")
         parent.addChild(el)
 
-        zoneId = self._generate_zone(self.surface, glyph['glyph']['bounding_box'])
-        el.addAttribute('facs', zoneId)
         el.addAttribute('shape', glyph['glyph']['name'].split('.')[1].upper())
         el.addAttribute('line', glyph['pitch']['strt_pos'])
+
+        if self.default_clefs:  # stash the last clef of a line as the 'default' for the next
+            self.next_clef = (glyph['glyph']['name'].split('.')[1].upper(), glyph['pitch']['strt_pos'])
+
+        zoneId = self._generate_zone(self.surface, glyph['glyph']['bounding_box'])
+        el.addAttribute('facs', zoneId)
 
     def _generate_custos(self, parent, glyph):
         el = MeiElement("custos")
