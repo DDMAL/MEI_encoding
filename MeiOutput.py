@@ -343,7 +343,7 @@ class MeiOutput(object):
 
     def _complete_primitive(self, name, parent, el, pitch):
         el.addAttribute('pname', pitch[0])
-        el.addAttribute('oct', str(int(pitch[1]) - 1))
+        el.addAttribute('oct', pitch[1])
 
         if 'punctum' in name:
             pass
@@ -361,7 +361,7 @@ class MeiOutput(object):
             if(el.getAttribute('facs')):
                 el2.addAttribute('facs', el.getAttribute('facs').getValue())
             el2.addAttribute('pname', relativePitch[0])
-            el2.addAttribute('oct', str(int(relativePitch[1]) - 1))
+            el2.addAttribute('oct', relativePitch[1])
             el2.addAttribute('ligature', 'true')
 
     def _get_new_pitch(self, startPitch, contour, interval):
