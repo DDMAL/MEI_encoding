@@ -460,10 +460,13 @@ class MeiOutput(object):
                 contours.append(int(x[0][1:]) - 1)
             elif x[0][0] == 'd':
                 contours.append(-(int(x[0][1:]) - 1))
+            elif x[0][0] == 's':
+                contours.append(0)
 
         return contours
 
     def _find_zone_positions(self, nc_names, contours):
+
         # returns a 'relative' bounding_box for each nc
         zone_pos = []
         nudge = 0   # each lig requires a contour indices nudge
@@ -482,6 +485,8 @@ class MeiOutput(object):
             r_lry = r_uly + 1
         zone_pos.append([r_ulx, r_uly, r_lrx, r_lry])
 
+        # print(nc_names, contours)
+        # print(zone_pos)
         # get the rest relative to the first
         for i, nc in enumerate(nc_names[1:]):
             r_ulx = r_lrx
