@@ -309,7 +309,7 @@ class MeiOutput(object):
 
         else:   # for now, interpolated the bounding_boxes for each nc
 
-            bounding_boxes = self._calculate_zones(glyph)
+            bounding_boxes = self._get_zonified_bounding_boxes(glyph)
             # bounding_boxes = [glyph['glyph']['bounding_box']] * int(len(name) / 2)
             print(bounding_boxes[0])
 
@@ -393,17 +393,18 @@ class MeiOutput(object):
         return [newNote, str(newOctave), clef]
 
     def _get_relative_pitch(self, pitch, name):
-        if 'ligature' in name:   # if ligature, find/use lower pitch
+        if 'ligature' in name:   # if ligature, find/return lower pitch
             return self._get_new_pitch(pitch, 'd', name.split('ligature')[1])
         else:
             return pitch
 
-    ##############################
-    # Interpolated CC facsimiles
-    ##############################
+    #########################
+    # Zonify Bounding Boxes
+    #########################
 
-    def _calculate_zones(self, glyph):
+    def _get_zonified_bounding_boxes(self, glyph):
 
+        # print(glyph)
         bounding_box = glyph['glyph']['bounding_box']
         num_ncs = int(len(glyph['glyph']['name'].split('.')) / 2)
 
@@ -413,7 +414,7 @@ class MeiOutput(object):
         contours = self._find_numeric_contours(nc_names)
         zone_pos = self._find_zone_positions(nc_names, contours)
 
-        x_min, x_max, y_min, y_max = self._calculate_zone_boundaries(nc_names, contours)
+        x_min, x_max, y_min, y_max = self._find_zone_edges(nc_names, contours)
         x_dim = x_max
         y_dim = y_max - y_min
         zone_bounding = (x_dim, y_dim)
@@ -429,7 +430,7 @@ class MeiOutput(object):
         x_dim, y_dim = zone_bounding        # x_dim relates to ncols, y_dim relates to nrows
         ncols = glyph_bounding['ncols']
         nrows = glyph_bounding['nrows']
-        if not self._zone_pos_positive(zone_pos):
+        if not self._zone_pos_is_positive(zone_pos):
             zone_pos = self._shift_zone_pos_positive(zone_pos)
 
         for nc in zone_pos:
@@ -448,27 +449,19 @@ class MeiOutput(object):
         # print(glyph_bounding['ulx'], glyph_bounding['uly'], glyph_bounding['ncols'], glyph_bounding['nrows'])
         return bounding_boxes
 
-    def _zone_pos_positive(self, zone_pos):
-        for z in zone_pos:
-            for num in [z[1], z[3]]:
-                if num < 0:
-                    return False
-        return True
+    def _find_numeric_contours(self, nc_names):
+        contours = [0]
+        for x in nc_names:
 
-    def _shift_zone_pos_positive(self, zone_pos):
-        negative = True
-        while negative:
-            self._shift_zone_pos_by1(zone_pos)
-            if self._zone_pos_positive(zone_pos):
-                negative = False
+            if 'ligature' in x[1]:
+                contours.append(-(int(x[1].split('ligature')[1]) - 1))
 
-        return zone_pos
+            if x[0][0] == 'u':
+                contours.append(int(x[0][1:]) - 1)
+            elif x[0][0] == 'd':
+                contours.append(-(int(x[0][1:]) - 1))
 
-    def _shift_zone_pos_by1(self, zone_pos):
-        for i, z in enumerate(zone_pos):
-            for j, num in enumerate(z):
-                if j == 1 or j == 3:
-                    zone_pos[i][j] += 1
+        return contours
 
     def _find_zone_positions(self, nc_names, contours):
         # returns a 'relative' bounding_box for each nc
@@ -479,9 +472,10 @@ class MeiOutput(object):
         r_ulx = 0
         r_uly = 0
 
+        # need to do first glyph manually
         if 'ligature' in nc_names[0][1]:
             r_lrx = r_ulx + self.lig_width
-            r_lry = r_uly - contours[0] + 1
+            r_lry = r_uly - contours[1] + 1
             nudge += 1
         else:
             r_lrx = r_ulx + 1
@@ -491,39 +485,25 @@ class MeiOutput(object):
         # get the rest relative to the first
         for i, nc in enumerate(nc_names[1:]):
             r_ulx = r_lrx
-            r_uly = r_lry - contours[i + nudge] - 1
+            r_uly = r_lry - contours[i + nudge + 1] - 1
 
             # find lrx, lry
             if 'ligature' in nc[1]:
                 r_lrx = r_ulx + self.lig_width
-                r_lry = r_uly - contours[i + nudge]
+                r_lry = r_uly - contours[i + nudge + 1]
                 nudge += 1
             else:
                 r_lrx = r_ulx + 1
                 r_lry = r_uly + 1
 
             zone_pos.append([r_ulx, r_uly, r_lrx, r_lry])
+            # print(zone_pos)
 
         return zone_pos
 
-    def _find_numeric_contours(self, nc_names):
-        contours = []
-        for x in nc_names:
-            if 'ligature' in x[1]:
-                contours.append(-(int(x[1].split('ligature')[1]) - 1))
-
-            if x[0] == 'neume':
-                pass
-            elif x[0][0] == 'u':
-                contours.append(int(x[0][1:]) - 1)
-            elif x[0][0] == 'd':
-                contours.append(-(int(x[0][1:]) - 1))
-
-        return contours
-
-    def _calculate_zone_boundaries(self, nc_names, contours):
+    def _find_zone_edges(self, nc_names, contours):
         # find boundaries of facs zone relative per glyph
-        # i.e. punctum/inclinatum gets 1x1, ligature# gets 2x#
+        # i.e. punctum/inclinatum gets 1x1, ligature2 gets 2x2
 
         x_dim_max = sum((self.lig_width if 'ligature' in x[1] else 1) for x in nc_names)
 
@@ -539,9 +519,46 @@ class MeiOutput(object):
 
         return 0, x_dim_max, y_dim_min, y_dim_max + 1
 
+    def _shift_zone_pos_positive(self, zone_pos):
+        negative = True
+        while negative:
+            self._shift_zone_pos_by1(zone_pos)
+            if self._zone_pos_is_positive(zone_pos):
+                negative = False
+
+        return zone_pos
+
+    def _shift_zone_pos_by1(self, zone_pos):
+        for i, z in enumerate(zone_pos):
+            for j, num in enumerate(z):
+                if j == 1 or j == 3:
+                    zone_pos[i][j] += 1
+
+    def _zone_pos_is_positive(self, zone_pos):
+        for z in zone_pos:
+            for num in [z[1], z[3]]:
+                if num < 0:
+                    return False
+        return True
+
     ############################
     # Neume Grouping Utilities
     ############################
+
+    def _group_neumes(self, neumes, max_distance, max_size):
+        # input a horizontal staff of neumes
+        # output grouped neume components
+
+        groupedNeumes = list([n] for n in neumes)
+        edges = self._get_edges(neumes)
+
+        self._auto_merge('inclinatum', 'left', groupedNeumes, edges)
+        self._auto_merge('ligature', 'right', groupedNeumes, edges)
+        self._auto_merge_if(max_distance, max_size, groupedNeumes, edges, self._get_edge_distance(edges))
+
+        self._print_neume_groups(groupedNeumes)
+
+        return groupedNeumes
 
     def _get_edges(self, glyphs):
         return list([g['glyph']['bounding_box']['ulx'], g['glyph']['bounding_box']['ulx'] + g['glyph']['bounding_box']['ncols']] for g in glyphs)
@@ -593,21 +610,6 @@ class MeiOutput(object):
         edges[pos - 1][1] = edges[pos][1]
         del neumes[pos]
         del edges[pos]
-
-    def _group_neumes(self, neumes, max_distance, max_size):
-        # input a horizontal staff of neumes
-        # output grouped neume components
-
-        groupedNeumes = list([n] for n in neumes)
-        edges = self._get_edges(neumes)
-
-        self._auto_merge('inclinatum', 'left', groupedNeumes, edges)
-        self._auto_merge('ligature', 'right', groupedNeumes, edges)
-        self._auto_merge_if(max_distance, max_size, groupedNeumes, edges, self._get_edge_distance(edges))
-
-        self._print_neume_groups(groupedNeumes)
-
-        return groupedNeumes
 
     def _print_neume_groups(self, neumeGroups):
         print('\n\nStaff')
