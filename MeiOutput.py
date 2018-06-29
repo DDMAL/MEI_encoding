@@ -362,8 +362,6 @@ class MeiOutput(object):
             el2.addAttribute('ligature', 'true')
 
     def _get_new_pitch(self, startPitch, contour, interval):
-        # print(startOctave, startNote, contour, interval)
-
         (startNote, startOctave, clef) = startPitch
 
         startOctave = int(startOctave)
