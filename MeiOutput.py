@@ -201,32 +201,29 @@ class MeiOutput(object):
             nextClef.addAttribute('line', self.next_clef[1])
             el.addChild(nextClef)
 
-        # for each non-skip glyph in this staff
-        staffGlyphs = list(filter(lambda g: g['pitch']['staff'] ==
-                                  el.getParent().getAttribute('n').value
-                                  and g['glyph']['name'].split('.')[0] != 'skip',
-                                  self.incoming_data['glyphs']))
+        # get all glyphs on THIS staff
+        glyphs = list(filter(lambda g: g['pitch']['staff'] ==
+                             el.getParent().getAttribute('n').value
+                             and g['glyph']['name'].split('.')[0] != 'skip',
+                             self.incoming_data['glyphs']))
+        # process all glyphs
+        processedGroupedGlyphs = self._process_glyphs(glyphs)
 
-        staffNeumes = list(filter(lambda g: g['glyph']['name'].split('.')[0] == 'neume', staffGlyphs))
-        staffNotNeumes = list(filter(lambda g: g['glyph']['name'].split('.')[0] != 'neume', staffGlyphs))
+        for groupedGlyph in processedGroupedGlyphs:
+            glyph = groupedGlyph[0]   # define first glyph
+            glyphName = glyph['glyph']['name'].split('.')[0]
 
-        for g in staffNotNeumes:
-            glyphName = g['glyph']['name'].split('.')[0]
             # print(glyphName)
             if glyphName == 'accid':
-                self._generate_accidental(el, g)
+                self._generate_accidental(el, glyph)
             elif glyphName == 'clef':
-                self._generate_clef(el, g)
+                self._generate_clef(el, glyph)
             elif glyphName == 'custos':
-                self._generate_custos(el, g)
+                self._generate_custos(el, glyph)
             elif glyphName == 'division':
-                self._generate_division(el, g)
-
-        staffNeumeGroups = self._group_neumes(staffNeumes, int(self.avg_punc_width * self.max_width), self.max_size)
-
-        for n in staffNeumeGroups:  # this part will change once we get lyric information
-            self._generate_syllable(el, n)
-        # print(staffNeumeGroups, '\n')
+                self._generate_division(el, glyph)
+            elif glyphName == 'neume':
+                self._generate_syllable(el, groupedGlyph)
 
     def _generate_comment(self, parent, text):
         el = MeiElement("_comment")
@@ -549,6 +546,36 @@ class MeiOutput(object):
     ############################
     # Neume Grouping Utilities
     ############################
+
+    def _process_glyphs(self, glyphs):
+        # separate glyphs by type
+        neumes = list(filter(lambda g: g['glyph']['name'].split('.')[0] == 'neume', glyphs))
+        notNeumes = list(filter(lambda g: g['glyph']['name'].split('.')[0] != 'neume', glyphs))
+
+        # group neume componenets
+        neumesGrouped = self._group_neumes(neumes, int(self.avg_punc_width * self.max_width), self.max_size)
+
+        unsortedGlyphs = neumesGrouped + list([g] for g in notNeumes)
+        sortedGlyphs = []
+
+        # sort glyphs by x position
+        for i, g in enumerate(unsortedGlyphs):
+            if sortedGlyphs == []:
+                sortedGlyphs = [g]
+            else:
+                append = True
+                for j, x in enumerate(sortedGlyphs):
+                    if x[0]['glyph']['bounding_box']['ulx'] >= g[0]['glyph']['bounding_box']['ulx']:
+                        # print('prepend')
+                        sortedGlyphs.insert(0, g)
+                        append = False
+                        break
+                if append:
+                    # print('append')
+                    sortedGlyphs.append(g)
+            # print(i, g)
+
+        return sortedGlyphs
 
     def _group_neumes(self, neumes, max_distance, max_size):
         # input a horizontal staff of neumes
