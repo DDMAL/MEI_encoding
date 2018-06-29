@@ -6,7 +6,7 @@ import json
 
 class MeiOutput(object):
 
-    SCALE = ['a', 'b', 'c', 'd', 'e', 'f', 'g']
+    SCALE = ['c', 'd', 'e', 'f', 'g', 'a', 'b']
 
     def __init__(self, incoming_data, kwargs):
         self.incoming_data = incoming_data
@@ -368,10 +368,7 @@ class MeiOutput(object):
 
         startOctave = int(startOctave)
         interval = int(interval) - 1  # because intervals are 1 note off
-
-        # rotate scale based on clef
-        rot = self.SCALE.index(clef)
-        SCALE = self.SCALE[rot:] + self.SCALE[:rot]
+        SCALE = self.SCALE
 
         if contour == 'u':      # upwards
             newOctave = startOctave + \
