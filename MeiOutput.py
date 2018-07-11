@@ -14,7 +14,7 @@ class MeiOutput(object):
         self.surface = False
         self.original_image = False
 
-        self.default_clefs = True
+        self.default_clefs = False
         self.next_clef = None
 
         self.avg_punc_width = self._avg_punctum(list(filter(lambda g: g['glyph']['name'] == 'neume.punctum', incoming_data['glyphs'])))
