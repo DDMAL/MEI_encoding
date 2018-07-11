@@ -13,6 +13,7 @@ class MeiOutput(object):
         self.version = kwargs['version']
         self.surface = False
         self.original_image = False
+
         self.default_clefs = True
         self.next_clef = None
 
@@ -297,26 +298,23 @@ class MeiOutput(object):
         singular = len(name) < 3
         zoneId = False
 
-        print('\n')
-        # if only one primative, bounding box can be found
+        # print('\n', name, glyph['pitch']['staff'])
+
+        # if one primative, bounding box already exists
         if singular:
-            print(glyph['glyph']['bounding_box'])
+            # print(glyph['glyph']['bounding_box'])
             zoneId = self._generate_zone(self.surface, glyph['glyph']['bounding_box'])
             el.addAttribute('facs', zoneId)
 
-        else:   # for now, interpolated the bounding_boxes for each nc
-
+        # otherwise, interpolate bounding_boxes for each nc
+        else:
+            # print(bounding_boxes[0])
             bounding_boxes = self._get_zonified_bounding_boxes(glyph)
-            # bounding_boxes = [glyph['glyph']['bounding_box']] * int(len(name) / 2)
-            print(bounding_boxes[0])
-
             zoneId = self._generate_zone(self.surface, bounding_boxes[0])
             el.addAttribute('facs', zoneId)
 
-        # fill out this primitive's attributes
         self._complete_primitive(name[1], parent, el, pitch)
 
-        # if multiple primitives, recursively generate nc's in relation to this
         if not singular:
             self._generate_nc_rec(parent, self._get_relative_pitch(pitch, name[1]), name[2:], bounding_boxes[1:])
 
@@ -324,7 +322,7 @@ class MeiOutput(object):
         el = MeiElement("nc")
         parent.addChild(el)
 
-        print(bounding_boxes[0])
+        # print(bounding_boxes[0])
         zoneId = self._generate_zone(self.surface, bounding_boxes[0])
         el.addAttribute('facs', zoneId)
 
@@ -348,7 +346,7 @@ class MeiOutput(object):
             # el.addAttribute('tilt', 'se')
             el.addAttribute('name', 'inclinatum')
         elif 'ligature' in name:
-            el.addAttribute('ligature', 'true')
+            el.addAttribute('ligatured', 'true')
 
             # generate second part of ligature
             el2 = MeiElement("nc")
@@ -549,26 +547,21 @@ class MeiOutput(object):
 
         # group neume componenets
         neumesGrouped = self._group_neumes(neumes, int(self.avg_punc_width * self.max_width), self.max_size)
-
-        unsortedGlyphs = neumesGrouped + list([g] for g in notNeumes)
         sortedGlyphs = []
 
-        # sort glyphs by x position
-        for i, g in enumerate(unsortedGlyphs):
-            if sortedGlyphs == []:
-                sortedGlyphs = [g]
-            else:
-                append = True
-                for j, x in enumerate(sortedGlyphs):
-                    if x[0]['glyph']['bounding_box']['ulx'] >= g[0]['glyph']['bounding_box']['ulx']:
-                        # print('prepend')
-                        sortedGlyphs.insert(0, g)
-                        append = False
-                        break
-                if append:
-                    # print('append')
-                    sortedGlyphs.append(g)
-            # print(i, g)
+        # add notNeumes to neumes based on x position
+        j = 0
+        for i, g in enumerate(neumesGrouped):
+            sortedGlyphs.append(g)
+
+            if j == len(notNeumes):
+                pass
+            elif notNeumes[j]['glyph']['bounding_box']['ulx'] <= g[0]['glyph']['bounding_box']['ulx']:
+                sortedGlyphs.insert(i, [notNeumes[j]])
+                j += 1
+
+        # for i, g in enumerate(sortedGlyphs):
+        #     print(g[0]['glyph']['bounding_box']['ulx'], list(x['glyph']['name'] for x in g))
 
         return sortedGlyphs
 
