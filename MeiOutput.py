@@ -186,6 +186,7 @@ class MeiOutput(object):
         el.addAttribute('facs', zoneId)
         el.addAttribute('n', str(staff['staff_no']))
         el.addAttribute('lines', str(staff['num_lines']))
+        el.addAttribute('line_positions', str(staff['line_positions']))
 
         self._generate_layer(el)
 
@@ -210,11 +211,12 @@ class MeiOutput(object):
         # process all glyphs
         processedGroupedGlyphs = self._process_glyphs(glyphs)
 
+        print('\n\n', el.getParent().getAttribute('n').value)
         for groupedGlyph in processedGroupedGlyphs:
             glyph = groupedGlyph[0]   # define first glyph
             glyphName = glyph['glyph']['name'].split('.')[0]
 
-            # print(glyphName)
+            print(glyph['glyph']['bounding_box']['ulx'], glyph['glyph']['name'])
             if glyphName == 'accid':
                 self._generate_accidental(el, glyph)
             elif glyphName == 'clef':
@@ -346,7 +348,7 @@ class MeiOutput(object):
             # el.addAttribute('tilt', 'se')
             el.addAttribute('name', 'inclinatum')
         elif 'ligature' in name:
-            el.addAttribute('ligatured', 'true')
+            el.addAttribute('ligature', 'true')
 
             # generate second part of ligature
             el2 = MeiElement("nc")
@@ -541,6 +543,7 @@ class MeiOutput(object):
     ############################
 
     def _process_glyphs(self, glyphs):
+
         # separate glyphs by type
         neumes = list(filter(lambda g: g['glyph']['name'].split('.')[0] == 'neume', glyphs))
         notNeumes = list(filter(lambda g: g['glyph']['name'].split('.')[0] != 'neume', glyphs))
@@ -556,12 +559,13 @@ class MeiOutput(object):
 
             if j == len(notNeumes):
                 pass
-            elif notNeumes[j]['glyph']['bounding_box']['ulx'] <= g[0]['glyph']['bounding_box']['ulx']:
-                sortedGlyphs.insert(i, [notNeumes[j]])
-                j += 1
-
-        # for i, g in enumerate(sortedGlyphs):
-        #     print(g[0]['glyph']['bounding_box']['ulx'], list(x['glyph']['name'] for x in g))
+            else:   # check whether to add any notNeumes
+                for nN in notNeumes[j:]:
+                    if nN['glyph']['bounding_box']['ulx'] <= g[0]['glyph']['bounding_box']['ulx']:
+                        sortedGlyphs.insert(i, [nN])
+                        j += 1
+                    else:
+                        break
 
         return sortedGlyphs
 
@@ -576,7 +580,7 @@ class MeiOutput(object):
         self._auto_merge('ligature', 'right', groupedNeumes, edges)
         self._auto_merge_if(max_distance, max_size, groupedNeumes, edges, self._get_edge_distance(edges))
 
-        self._print_neume_groups(groupedNeumes)
+        # self._print_neume_groups(groupedNeumes)
 
         return groupedNeumes
 
