@@ -211,12 +211,12 @@ class MeiOutput(object):
         # process all glyphs
         processedGroupedGlyphs = self._process_glyphs(glyphs)
 
-        print('\n\n', el.getParent().getAttribute('n').value)
+        # print('\n\n', el.getParent().getAttribute('n').value)
         for groupedGlyph in processedGroupedGlyphs:
             glyph = groupedGlyph[0]   # define first glyph
             glyphName = glyph['glyph']['name'].split('.')[0]
 
-            print(glyph['glyph']['bounding_box']['ulx'], glyph['glyph']['name'])
+            # print(glyph['glyph']['bounding_box']['ulx'], glyph['glyph']['name'])
             if glyphName == 'accid':
                 self._generate_accidental(el, glyph)
             elif glyphName == 'clef':
@@ -555,17 +555,22 @@ class MeiOutput(object):
         # add notNeumes to neumes based on x position
         j = 0
         for i, g in enumerate(neumesGrouped):
-            sortedGlyphs.append(g)
-
             if j == len(notNeumes):
                 pass
             else:   # check whether to add any notNeumes
                 for nN in notNeumes[j:]:
                     if nN['glyph']['bounding_box']['ulx'] <= g[0]['glyph']['bounding_box']['ulx']:
-                        sortedGlyphs.insert(i, [nN])
+                        sortedGlyphs.append([nN])
                         j += 1
                     else:
-                        break
+                        break   # sorted by ulx so no reason to continue
+
+            sortedGlyphs.append(g)
+
+        # print('\n\n')
+        # for group in sortedGlyphs:
+        #     for g in group:
+        #         print(g['glyph']['bounding_box']['ulx'], g['glyph']['name'])
 
         return sortedGlyphs
 
