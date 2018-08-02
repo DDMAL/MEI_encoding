@@ -296,6 +296,7 @@ class MeiOutput(object):
 
         name = glyph['glyph']['name'].split('.')
         pitch = [glyph['pitch']['note'], glyph['pitch']['octave'], glyph['pitch']['clef'].split('.')[1]]
+        bounding_box = None
 
         singular = len(name) < 3
         zoneId = False
@@ -304,18 +305,18 @@ class MeiOutput(object):
 
         # if one primative, bounding box already exists
         if singular:
-            # print(glyph['glyph']['bounding_box'])
-            zoneId = self._generate_zone(self.surface, glyph['glyph']['bounding_box'])
+            bounding_box = glyph['glyph']['bounding_box']
+            zoneId = self._generate_zone(self.surface, bounding_box)
             el.addAttribute('facs', zoneId)
 
         # otherwise, interpolate bounding_boxes for each nc
         else:
-            # print(bounding_boxes[0])
             bounding_boxes = self._get_zonified_bounding_boxes(glyph)
-            zoneId = self._generate_zone(self.surface, bounding_boxes[0])
+            bounding_box = bounding_boxes[0]
+            zoneId = self._generate_zone(self.surface, bounding_box)
             el.addAttribute('facs', zoneId)
 
-        self._complete_primitive(name[1], parent, el, pitch)
+        self._complete_primitive(name[1], parent, el, pitch, bounding_box)
 
         if not singular:
             self._generate_nc_rec(parent, self._get_relative_pitch(pitch, name[1]), name[2:], bounding_boxes[1:])
@@ -325,11 +326,12 @@ class MeiOutput(object):
         parent.addChild(el)
 
         # print(bounding_boxes[0])
-        zoneId = self._generate_zone(self.surface, bounding_boxes[0])
+        bounding_box = bounding_boxes[0]
+        zoneId = self._generate_zone(self.surface, bounding_box)
         el.addAttribute('facs', zoneId)
 
         newPitch = self._get_new_pitch(pitch, acc[0][0], acc[0][1])
-        self._complete_primitive(acc[1], parent, el, newPitch)
+        self._complete_primitive(acc[1], parent, el, newPitch, bounding_box)
 
         if acc[2:]:  # recursive step
             self._generate_nc_rec(parent, self._get_relative_pitch(newPitch, acc[1]), acc[2:], bounding_boxes[1:])
@@ -338,7 +340,7 @@ class MeiOutput(object):
     # Generation Utilities
     ########################
 
-    def _complete_primitive(self, name, parent, el, pitch):
+    def _complete_primitive(self, name, parent, el, pitch, bounding_box):
         el.addAttribute('pname', pitch[0])
         el.addAttribute('oct', pitch[1])
 
@@ -355,8 +357,9 @@ class MeiOutput(object):
             parent.addChild(el2)
             relativePitch = self._get_relative_pitch(pitch, name)
 
-            if(el.getAttribute('facs')):
-                el2.addAttribute('facs', el.getAttribute('facs').getValue())
+            zoneId = self._generate_zone(self.surface, bounding_box)
+            el2.addAttribute('facs', zoneId)
+
             el2.addAttribute('pname', relativePitch[0])
             el2.addAttribute('oct', relativePitch[1])
             el2.addAttribute('ligature', 'true')
