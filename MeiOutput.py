@@ -208,6 +208,7 @@ class MeiOutput(object):
                              el.getParent().getAttribute('n').value
                              and g['glyph']['name'].split('.')[0] != 'skip',
                              self.incoming_data['glyphs']))
+
         # process all glyphs
         processedGroupedGlyphs = self._process_glyphs(glyphs)
 
@@ -555,20 +556,22 @@ class MeiOutput(object):
         neumesGrouped = self._group_neumes(neumes, int(self.avg_punc_width * self.max_width), self.max_size)
         sortedGlyphs = []
 
-        # add notNeumes to neumes based on x position
-        j = 0
-        for i, g in enumerate(neumesGrouped):
-            if j == len(notNeumes):
-                pass
-            else:   # check whether to add any notNeumes
-                for nN in notNeumes[j:]:
-                    if nN['glyph']['bounding_box']['ulx'] <= g[0]['glyph']['bounding_box']['ulx']:
-                        sortedGlyphs.append([nN])
-                        j += 1
-                    else:
-                        break   # sorted by ulx so no reason to continue
+        while neumesGrouped or notNeumes:
+            # place the rest at the end
+            if not notNeumes:
+                sortedGlyphs.append(neumesGrouped[0])
+                del neumesGrouped[0]
+            elif not neumesGrouped:
+                sortedGlyphs.append([notNeumes[0]])
+                del notNeumes[0]
 
-            sortedGlyphs.append(g)
+            # place in order
+            elif notNeumes[0]['glyph']['bounding_box']['ulx'] <= neumesGrouped[0][0]['glyph']['bounding_box']['ulx']:
+                sortedGlyphs.append([notNeumes[0]])
+                del notNeumes[0]
+            else:
+                sortedGlyphs.append(neumesGrouped[0])
+                del neumesGrouped[0]
 
         # print('\n\n')
         # for group in sortedGlyphs:
