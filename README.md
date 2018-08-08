@@ -12,7 +12,7 @@ JSOMR to MEI is deployed as a Rodan [Job Package](https://github.com/DDMAL/Rodan
 ``` python
     volumes:
      - ./jobs/settings.py:/code/rodan/rodan/settings.py
-     - ./jobs/JSOMR2MEI/rodan_job:/code/rodan/rodan/jobs/JSOMR2MEI
+     - ./jobs/JSOMR2MEI/:/code/rodan/rodan/jobs/JSOMR2MEI
 ```
 3. If one does not already exist, create a python file called `settings.py` in the rodan jobs folder like so: `/path/to/rodan_docker/jobs/settings.py`
 4. Copy and paste the contents of `settings.py.job_development` into `settings.py`
