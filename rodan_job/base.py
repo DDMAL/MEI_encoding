@@ -11,12 +11,13 @@ class JSOMR2MEI(RodanTask):
     settings = {
         'title': 'JSOMR to MEI settings',
         'type': 'object',
-        'required': ['MEI Version'],
+        'required': ['Clasification Spec'],
         'properties': {
-            'MEI Version': {
+            'Clasification Spec': {
+                'enum': ['Neume Components', 'Neume Mappings'],
                 'type': 'string',
-                'default': 'N',
-                'description': 'MEI file version to generate'
+                'default': 'Neume Components',
+                'description': 'Specifies the naming, grouping, and spliting conventions used for glyph classification'
             }
         }
     }
@@ -44,7 +45,7 @@ class JSOMR2MEI(RodanTask):
             jsomr = json.loads(file.read())
 
         kwargs = {
-            'version': 'neume',
+            'version': '4.0.0',
 
             'max_neume_spacing': 0.3,
             'max_group_size': 8,

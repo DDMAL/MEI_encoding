@@ -660,7 +660,7 @@ if __name__ == "__main__":
     kwargs = {
         'max_neume_spacing': 0.3,
         'max_group_size': 8,
-        'version': 'N',
+        'version': '4.0.0',
     }
 
     mei_obj = MeiOutput(jsomr, **kwargs)

@@ -1,22 +1,29 @@
-# JSOMR2MEI
-Conversion from jsomr, a json like format containing pitches and CC information, into MEI as a job in the workflow builder [```Rodan```](https://github.com/DDMAL/Rodan)
+# JSOMR to MEI Wiki
 
-## Installation
-- Move this directory into the rodan jobs folder
-- If it does not already exist, create a python file called `settings.py` in the rodan folder like so: `rodan_docker/rodan/code/rodan/rodan/settings.py`
-- Copy and paste the contents of `settings.py.development` into `settings.py`
-- Include the path to this folder in the Rodan Job Package registration in the settings.py file. This should look something like the following
-``` python
-RODAN_JOB_PACKAGES = (
-  "rodan.jobs.JSOMR2MEI",
-  # Paths to other jobs
-)
-```
-- In `docker-compose.job-dev.yml`, add the following reference to volumes like so
+Automated conversion from [`JSOMR`](JSOMR) into [MEI](http://music-encoding.org/) as a job in the workflow builder [```Rodan```](https://github.com/DDMAL/Rodan)
+
+## Prereq
+
+JSOMR to MEI is deployed as a Rodan [Job Package](https://github.com/DDMAL/Rodan/wiki/Write-a-Rodan-job-package). Before installing, ensure that the latestest version of [`rodan-docker`](https://github.com/DDMAL/rodan-docker) has been cloned locally, built, and installed.
+
+## Installing into rodan-docker
+1. Clone this directory into `/path/to/rodan_docker/jobs/JSOMR2MEI`
+2. In `/path/to/rodan_docker/docker-compose.job-dev.yml`, add the reference to volumes like so:
 ``` python
     volumes:
-     - ./jobs/JSOMR2MEI:/code/rodan/rodan/jobs/JSOMR2MEI
      - ./jobs/settings.py:/code/rodan/rodan/settings.py
+     - ./jobs/JSOMR2MEI/rodan_job:/code/rodan/rodan/jobs/JSOMR2MEI
+```
+3. If one does not already exist, create a python file called `settings.py` in the rodan jobs folder like so: `/path/to/rodan_docker/jobs/settings.py`
+4. Copy and paste the contents of `settings.py.job_development` into `settings.py`
+5. Add this package path to the Rodan Job Package registration in the `settings.py` file. This should look something like the following
+``` python
+RODAN_JOB_PACKAGES = (
+  "rodan.jobs.job1",
+  "rodan.jobs.job2",
+  ...,
+  "rodan.jobs.JSOMR2MEI",
+)
 ```
 
 ## Running Rodan
