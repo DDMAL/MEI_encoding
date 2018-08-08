@@ -1,0 +1,11 @@
+[
+  "tests/test_MeiOutput.py::T::test_a01_generate_synthMEI",
+  "tests/test_MeiOutput.py::T::test_a02_generate_cf18MEI",
+  "tests/test_MeiOutput.py::T::test_c01_get_relative_pitch",
+  "tests/test_MeiOutput.py::T::test_e_01__zonify_bounding_boxes",
+  "tests/test_MeiOutput.py::T::test_e_02_find_numeric_contours",
+  "tests/test_MeiOutput.py::T::test_e_03_find_zone_positions",
+  "tests/test_MeiOutput.py::T::test_e_04_find_zone_edges",
+  "tests/test_MeiOutput.py::T::test_e_05_zone_pos_is_positive",
+  "tests/test_MeiOutput.py::T::test_e_06_shift_zone_pos_positive"
+]
