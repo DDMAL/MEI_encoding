@@ -1,12 +1,9 @@
 from rodan.jobs.base import RodanTask
-<<<<<<< HEAD:JSOMR2MEI.py
-import json
-=======
+
 from gamera.core import Image
 from MeiOutput import MeiOutput
 import json
 
->>>>>>> dev:base.py
 
 class JSOMR2MEI(RodanTask):
     name = 'JSOMR to MEI'
@@ -17,22 +14,14 @@ class JSOMR2MEI(RodanTask):
         'type': 'object',
         'required': ['Clasification Spec'],
         'properties': {
-<<<<<<< HEAD:JSOMR2MEI.py
-            'MEI Version': {
-                'type': 'integer',
-                'default': 3,
-                'minimum': 0,
-                'maximum': 4,
-                'description': 'MEI file version to generate'
-=======
             'Clasification Spec': {
                 'enum': ['Neume Components', 'Neume Mappings'],
                 'type': 'string',
                 'default': 'Neume Components',
                 'description': 'Specifies the naming, grouping, and spliting conventions used for glyph classification'
->>>>>>> dev:base.py
+
             }
-        } 
+        }
     }
     enabled = True
     category = "Test"
@@ -58,12 +47,6 @@ class JSOMR2MEI(RodanTask):
             jsomr = json.loads(file.read())
         print jsomr
 
-<<<<<<< HEAD:JSOMR2MEI.py
-        mei_version = settings['MEI Version']
-        print mei_version
-       
-=======
->>>>>>> dev:base.py
         kwargs = {
             'version': '4.0.0',
 
@@ -71,13 +54,9 @@ class JSOMR2MEI(RodanTask):
             'max_group_size': 8,
         }
 
-<<<<<<< HEAD:JSOMR2MEI.py
-        output_mei = jsomr
-=======
         # do job
         mei_obj = MeiOutput(jsomr, **kwargs)
         mei_string = mei_obj.run()
->>>>>>> dev:base.py
 
         outfile_path = outputs['MEI'][0]['resource_path']
         outfile = open(outfile_path, "w")

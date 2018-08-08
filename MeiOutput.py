@@ -2,13 +2,6 @@
 
 class MeiOutput(object):
 
-<<<<<<< HEAD
-    def __init__(self, incoming_data, version, **kwargs):
-        self.incoming_data = incoming_data
-        self.version = version
-
-    def run(self):
-=======
     SCALE = ['c', 'd', 'e', 'f', 'g', 'a', 'b']
 
     def __init__(self, incoming_data, **kwargs):
@@ -671,8 +664,5 @@ if __name__ == "__main__":
     if image:
         mei_obj.add_Image(image)
     mei_string = mei_obj.run()
->>>>>>> dev
 
         print("ran")
-
-        
