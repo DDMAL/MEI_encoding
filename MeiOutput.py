@@ -164,6 +164,8 @@ class MeiOutput(object):
         el.addAttribute('n', '1')   # use first staff parameters
         el.addAttribute('lines', str(self.incoming_data['staves'][0]['num_lines']))
         el.addAttribute('notationtype', 'neume')
+        el.addAttribute('clef.line', '3')
+        el.addAttribute('clef.shape', 'C')
 
     def _generate_section(self, parent):
         el = MeiElement("section")
