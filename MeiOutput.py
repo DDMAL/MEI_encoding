@@ -1,4 +1,5 @@
-
+import sys, json
+from pymei import MeiDocument, MeiElement, documentToText
 
 class MeiOutput(object):
 
@@ -666,5 +667,8 @@ if __name__ == "__main__":
     if image:
         mei_obj.add_Image(image)
     mei_string = mei_obj.run()
+
+    with open('output.mei', 'w') as file:
+        file.write(mei_string)
 
     print("ran")
