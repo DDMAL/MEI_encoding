@@ -24,7 +24,7 @@ class JSOMR2MEI(RodanTask):
         }
     }
     enabled = True
-    category = "Test"
+    category = "Encoding"
     interactive = False
     input_port_types = [{
         'name': 'JSOMR',
