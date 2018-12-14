@@ -7,9 +7,7 @@ class MeiOutput(object):
 
     def __init__(self, incoming_data, **kwargs):
         self.incoming_data = incoming_data
-        self.version = kwargs['version']
-
-        self.original_image = False
+        self.mei_version = kwargs['mei_version']
 
         # for storing during generation
         self.surface = False
@@ -28,9 +26,6 @@ class MeiOutput(object):
 
     def run(self):
         return self._createDoc()
-
-    def add_Image(self, image):
-        self.original_image = image
 
     #####################
     # Utility Functions
@@ -67,7 +62,7 @@ class MeiOutput(object):
         el = MeiElement("mei")
         parent.root = el
 
-        el.addAttribute("meiversion", self.version)
+        el.addAttribute("meiversion", self.mei_version)
 
         self._generate_meiHead(el)
         self._generate_music(el)
@@ -101,14 +96,7 @@ class MeiOutput(object):
         }
 
         self._add_attributes(el, attribs)
-        self._generate_graphic(el)
         self.surface = el
-
-    def _generate_graphic(self, parent):
-        el = MeiElement("graphic")
-        parent.addChild(el)
-
-        el.addAttribute('xlink:href', str(self.original_image))
 
     def _generate_zone(self, parent, bounding_box):
         (nrows, ulx, uly, ncols) = bounding_box.values()
@@ -332,10 +320,18 @@ class MeiOutput(object):
 
         if 'punctum' in name:
             pass
+
         elif 'inclinatum' in name:
-            el.addAttribute('name', 'inclinatum')
+            if self.mei_version is '4.0.0':
+                el.addAttribute('tilt', 'se')
+            else:
+                el.addAttribute('name', 'inclinatum')
+
         elif 'ligature' in name:
-            el.addAttribute('ligature', 'true')
+            if self.mei_version is '4.0.0':
+                el.addAttribute('ligated', 'true')
+            else:
+                el.addAttribute('ligature', 'true')
 
             # generate second part of ligature
             el2 = MeiElement("nc")
@@ -347,7 +343,10 @@ class MeiOutput(object):
 
             el2.addAttribute('pname', relativePitch[0])
             el2.addAttribute('oct', relativePitch[1])
-            el2.addAttribute('ligature', 'true')
+            if self.mei_version is'4.0.0':
+                el2.addAttribute('ligated', 'true')
+            else:
+                el2.addAttribute('ligature', 'true')
 
     ##################
     # Complex Neumes
@@ -644,28 +643,22 @@ class MeiOutput(object):
 
 if __name__ == "__main__":
 
-    if len(sys.argv) == 3:
-        (tmp, inJSOMR, image) = sys.argv
-    elif len(sys.argv) == 2:
+    if len(sys.argv) == 2:
         (tmp, inJSOMR) = sys.argv
-        image = None
     else:
-        print("incorrect usage\npython3 main.py (image/path)")
+        print("incorrect usage\npython3 main.py")
         quit()
 
     with open(inJSOMR, 'r') as file:
         jsomr = json.loads(file.read())
 
     kwargs = {
+        'mei_version': '4.0.0',
         'max_neume_spacing': 0.3,
         'max_group_size': 8,
-        'version': '4.0.0',
     }
 
     mei_obj = MeiOutput(jsomr, **kwargs)
-
-    if image:
-        mei_obj.add_Image(image)
     mei_string = mei_obj.run()
 
     with open('output.mei', 'w') as file:
