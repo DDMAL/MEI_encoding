@@ -60,6 +60,6 @@ class JSOMR2MEI(RodanTask):
 
         outfile_path = outputs['MEI'][0]['resource_path']
         outfile = open(outfile_path, "w")
-        outfile.write(json.dumps(output_mei))
+        outfile.write(json.dumps(mei_string))
         outfile.close()
         return True
