@@ -1,3 +1,4 @@
+from pymei import *
 
 
 class MeiOutput(object):
@@ -52,32 +53,28 @@ class MeiOutput(object):
     ##################
 
     def _createDoc(self):
-        doc = self._generate_doc()
 
-        return documentToText(doc)
+        meiDoc = MeiDocument(self.version)
+        self._generate_music(meiDoc)
+        documentToFile(meiDoc, './test_output.mei')
+        return documentToText(meiDoc)
 
-    def _generate_doc(self):
-        meiDoc = MeiDocument()
-        self._generate_mei(meiDoc)
+    # def _generate_mei(self, parent):
+    #     el = MeiElement("mei")
+    #     parent.root = el
+    #
+    #     # no mei header element needed!
+    #     # self._generate_meiHead(el)
+    #     self._generate_music(el)
 
-        return meiDoc
-
-    def _generate_mei(self, parent):
-        el = MeiElement("mei")
-        parent.root = el
-
-        el.addAttribute("meiversion", self.version)
-
-        self._generate_meiHead(el)
-        self._generate_music(el)
-
-    def _generate_meiHead(self, parent):
-        el = MeiElement("meiHead")
-        parent.addChild(el)
+    # def _generate_meiHead(self, parent):
+    #     el = MeiElement("meiHead")
+    #
+    #     parent.addChild(el)
 
     def _generate_music(self, parent):
         el = MeiElement("music")
-        parent.addChild(el)
+        parent.root = el
 
         self._generate_facsimile(el)
         self._generate_body(el)
@@ -107,7 +104,7 @@ class MeiOutput(object):
         el = MeiElement("graphic")
         parent.addChild(el)
 
-        el.addAttribute('xlink:href', str(self.original_image))
+        # el.addAttribute('xlink:href', str(self.original_image))
 
     def _generate_zone(self, parent, bounding_box):
         (nrows, ulx, uly, ncols) = bounding_box.values()
@@ -162,7 +159,7 @@ class MeiOutput(object):
         parent.addChild(el)
 
         el.addAttribute('n', '1')   # use first staff parameters
-        el.addAttribute('lines', str(self.incoming_data['staves'][0]['num_lines']))
+        # el.addAttribute('lines', str(self.incoming_data['staves'][0]['num_lines']))
         el.addAttribute('notationtype', 'neume')
 
     def _generate_section(self, parent):
@@ -179,8 +176,8 @@ class MeiOutput(object):
         zoneId = self._generate_zone(self.surface, staff['bounding_box'])
         el.addAttribute('facs', zoneId)
         el.addAttribute('n', str(staff['staff_no']))
-        el.addAttribute('lines', str(staff['num_lines']))
-        el.addAttribute('line_positions', str(staff['line_positions']))
+        # el.addAttribute('lines', str(staff['num_lines']))
+        # el.addAttribute('line_positions', str(staff['line_positions']))
 
         self._generate_layer(el)
 
@@ -229,7 +226,13 @@ class MeiOutput(object):
 
         zoneId = self._generate_zone(self.surface, glyph['glyph']['bounding_box'])
         el.addAttribute('facs', zoneId)
-        el.addAttribute("accid", glyph['glyph']['name'].split('.')[1])
+
+        # neume notation should only ever have flats, represented by an 'f' in the <accid> element
+        acc = str(glyph['glyph']['name'].split('.')[1])
+        if acc == 'flat':
+            el.addAttribute('accid', 'f')
+        else:
+            el.addAttribute(acc)
 
     def _generate_clef(self, parent, glyph):
         el = MeiElement("clef")
@@ -247,8 +250,8 @@ class MeiOutput(object):
 
         zoneId = self._generate_zone(self.surface, glyph['glyph']['bounding_box'])
         el.addAttribute('facs', zoneId)
-        el.addAttribute("oct", str(glyph['pitch']['octave']))
-        el.addAttribute("pname", str(glyph['pitch']['note']))
+        el.addAttribute('oct', str(glyph['pitch']['octave']))
+        el.addAttribute('pname', str(glyph['pitch']['note']))
 
     def _generate_division(self, parent, glyph):
         el = MeiElement("division")
@@ -330,9 +333,9 @@ class MeiOutput(object):
         if 'punctum' in name:
             pass
         elif 'inclinatum' in name:
-            el.addAttribute('name', 'inclinatum')
+            el.addAttribute('type', 'inclinatum')
         elif 'ligature' in name:
-            el.addAttribute('ligature', 'true')
+            el.addAttribute('ligated', 'true')
 
             # generate second part of ligature
             el2 = MeiElement("nc")
@@ -344,7 +347,7 @@ class MeiOutput(object):
 
             el2.addAttribute('pname', relativePitch[0])
             el2.addAttribute('oct', relativePitch[1])
-            el2.addAttribute('ligature', 'true')
+            el2.addAttribute('ligated', 'true')
 
     ##################
     # Complex Neumes
@@ -665,4 +668,4 @@ if __name__ == "__main__":
         mei_obj.add_Image(image)
     mei_string = mei_obj.run()
 
-        print("ran")
+    print("ran")
