@@ -1,4 +1,5 @@
-from pymei import *
+import sys, json
+from pymei import MeiDocument, MeiElement, documentToText, documentToFile
 
 
 class MeiOutput(object):
@@ -7,9 +8,8 @@ class MeiOutput(object):
 
     def __init__(self, incoming_data, **kwargs):
         self.incoming_data = incoming_data
-        self.version = kwargs['version']
+        self.version = kwargs['mei_version']
 
-        self.original_image = False
 
         # for storing during generation
         self.surface = False
@@ -18,6 +18,7 @@ class MeiOutput(object):
         self.avg_punc_width = self._avg_punctum(list(filter(lambda g: g['glyph']['name'] == 'neume.punctum', incoming_data['glyphs'])))
         self.max_neume_spacing = kwargs['max_neume_spacing']
         self.max_group_size = kwargs['max_group_size']
+        self.mei_version = kwargs['mei_version']
 
         # nc interpolating
         self.lig_width = 2  # width of ligature in whole punctums
@@ -28,9 +29,6 @@ class MeiOutput(object):
 
     def run(self):
         return self._createDoc()
-
-    def add_Image(self, image):
-        self.original_image = image
 
     #####################
     # Utility Functions
@@ -56,7 +54,6 @@ class MeiOutput(object):
 
         meiDoc = MeiDocument(self.version)
         self._generate_music(meiDoc)
-        documentToFile(meiDoc, './test_output.mei')
         return documentToText(meiDoc)
 
     # def _generate_mei(self, parent):
@@ -74,6 +71,7 @@ class MeiOutput(object):
 
     def _generate_music(self, parent):
         el = MeiElement("music")
+        el.addAttribute("meiversion", self.mei_version)
         parent.root = el
 
         self._generate_facsimile(el)
@@ -97,14 +95,7 @@ class MeiOutput(object):
         }
 
         self._add_attributes(el, attribs)
-        self._generate_graphic(el)
         self.surface = el
-
-    def _generate_graphic(self, parent):
-        el = MeiElement("graphic")
-        parent.addChild(el)
-
-        # el.addAttribute('xlink:href', str(self.original_image))
 
     def _generate_zone(self, parent, bounding_box):
         (nrows, ulx, uly, ncols) = bounding_box.values()
@@ -161,6 +152,8 @@ class MeiOutput(object):
         el.addAttribute('n', '1')   # use first staff parameters
         # el.addAttribute('lines', str(self.incoming_data['staves'][0]['num_lines']))
         el.addAttribute('notationtype', 'neume')
+        el.addAttribute('clef.line', '3')
+        el.addAttribute('clef.shape', 'C')
 
     def _generate_section(self, parent):
         el = MeiElement("section")
@@ -332,10 +325,18 @@ class MeiOutput(object):
 
         if 'punctum' in name:
             pass
+
+        # differences in encoding inclinatums and ligatures in mei_versions 4:
         elif 'inclinatum' in name:
-            el.addAttribute('type', 'inclinatum')
+            if int(self.mei_version[0]) >= 4:
+                el.addAttribute('tilt', 'se')
+            else:
+                el.addAttribute('name', 'inclinatum')
         elif 'ligature' in name:
-            el.addAttribute('ligated', 'true')
+            if int(self.mei_version[0]) >= 4:
+                el.addAttribute('ligated', 'true')
+            else:
+                el.addAttribute('ligature', 'true')
 
             # generate second part of ligature
             el2 = MeiElement("nc")
@@ -347,7 +348,10 @@ class MeiOutput(object):
 
             el2.addAttribute('pname', relativePitch[0])
             el2.addAttribute('oct', relativePitch[1])
-            el2.addAttribute('ligated', 'true')
+            if int(self.mei_version[0]) >= 4:
+                el2.addAttribute('ligated', 'true')
+            else:
+                el2.addAttribute('ligature', 'true')
 
     ##################
     # Complex Neumes
@@ -644,13 +648,10 @@ class MeiOutput(object):
 
 if __name__ == "__main__":
 
-    if len(sys.argv) == 3:
-        (tmp, inJSOMR, image) = sys.argv
-    elif len(sys.argv) == 2:
+    if len(sys.argv) == 2:
         (tmp, inJSOMR) = sys.argv
-        image = None
     else:
-        print("incorrect usage\npython3 main.py (image/path)")
+        print("incorrect usage\npython3 main.py")
         quit()
 
     with open(inJSOMR, 'r') as file:
@@ -659,13 +660,13 @@ if __name__ == "__main__":
     kwargs = {
         'max_neume_spacing': 0.3,
         'max_group_size': 8,
-        'version': '4.0.0',
+        'mei_version': '4.0.0',
     }
 
     mei_obj = MeiOutput(jsomr, **kwargs)
-
-    if image:
-        mei_obj.add_Image(image)
     mei_string = mei_obj.run()
+
+    with open('output.mei', 'w') as file:
+        file.write(mei_string)
 
     print("ran")

@@ -1,3 +1,7 @@
+jsomr-env/
+output.mei
+*.rng
+
 # test files
 CF-011/
 
