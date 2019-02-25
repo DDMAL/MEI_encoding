@@ -1,6 +1,8 @@
 jsomr-env/
-output.mei
+jsomr_files/
+*.mei
 *.rng
+*.DS_Store
 
 # test files
 CF-011/

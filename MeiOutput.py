@@ -1,4 +1,4 @@
-import sys, json
+import sys, json, os
 from pymei import MeiDocument, MeiElement, documentToText, documentToFile
 
 
@@ -654,19 +654,35 @@ if __name__ == "__main__":
         print("incorrect usage\npython3 main.py")
         quit()
 
-    with open(inJSOMR, 'r') as file:
-        jsomr = json.loads(file.read())
-
     kwargs = {
         'max_neume_spacing': 0.3,
         'max_group_size': 8,
         'mei_version': '4.0.0',
     }
 
-    mei_obj = MeiOutput(jsomr, **kwargs)
-    mei_string = mei_obj.run()
+    if os.path.isfile(inJSOMR):
+        with open(inJSOMR, 'r') as file:
+            jsomr = json.loads(file.read())
 
-    with open('output.mei', 'w') as file:
-        file.write(mei_string)
+        mei_obj = MeiOutput(jsomr, **kwargs)
+        mei_string = mei_obj.run()
+
+        with open('output.mei', 'w') as file:
+            file.write(mei_string)
+    elif os.path.isdir(inJSOMR):
+        files = [x for x in os.listdir(inJSOMR) if '.json' in x[-5:]]
+        for f in files:
+            try:
+                with open(os.path.join(inJSOMR, f), 'r') as file:
+                    jsomr = json.loads(file.read())
+            except IOError:
+                continue
+            print('processing {}...'.format(f))
+
+            mei_obj = MeiOutput(jsomr, **kwargs)
+            mei_string = mei_obj.run()
+
+            with open('output_{}.mei'.format(f), 'w') as file:
+                file.write(mei_string)
 
     print("ran")
