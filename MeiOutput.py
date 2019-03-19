@@ -50,11 +50,14 @@ class MeiOutput(object):
     # MEI Generators
     ##################
 
-    def _createDoc(self):
+    def _createDoc(self, return_text=True):
 
         meiDoc = MeiDocument(self.version)
         self._generate_music(meiDoc)
-        return documentToText(meiDoc)
+        if return_text:
+            return documentToText(meiDoc)
+        else:
+            return meiDoc
 
     # def _generate_mei(self, parent):
     #     el = MeiElement("mei")
@@ -666,6 +669,7 @@ if __name__ == "__main__":
 
         mei_obj = MeiOutput(jsomr, **kwargs)
         mei_string = mei_obj.run()
+        mei_doc = mei_obj._createDoc(return_text=False)
 
         with open('output.mei', 'w') as file:
             file.write(mei_string)
@@ -684,5 +688,5 @@ if __name__ == "__main__":
 
             with open('output_{}.mei'.format(f), 'w') as file:
                 file.write(mei_string)
-
-    print("ran")
+    else:
+        print(inJSOMR + " not found")
