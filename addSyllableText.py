@@ -13,6 +13,7 @@ def intersect(bb1, bb2):
     else:
         return False
 
+
 def union_bboxes(bboxes):
     '''
     given an iterable of bounding boxes, finds the smallest bounding box containing all of them
@@ -22,37 +23,21 @@ def union_bboxes(bboxes):
     ulx = min(int(bb['ulx']) for bb in bboxes)
     uly = min(int(bb['uly']) for bb in bboxes)
 
-    return {'ulx':ulx, 'uly':uly, 'lrx':lrx, 'lry':lry}
+    return {'ulx': ulx, 'uly': uly, 'lrx': lrx, 'lry': lry}
 
-if __name__ == '__main__':
 
-    fname = 'salzinnes_20'
-    inJSOMR = './jsomr_files/pitches_{}.json'.format(fname)
-    in_syls = './json_syls/syls_{}.json'.format(fname)
+def add_syllables_to_doc(mei_doc, syls_json, return_text=False):
 
-    kwargs = {
-        'max_neume_spacing': 0.3,
-        'max_group_size': 8,
-        'mei_version': '4.0.0',
-    }
-
-    with open(inJSOMR, 'r') as file:
-        jsomr = json.loads(file.read())
-        mei_obj = MeiOutput(jsomr, **kwargs)
-        mei_doc = mei_obj._createDoc(return_text=False)
-
-    with open(in_syls) as file:
-        syls_json = json.loads(file.read())
-        median_line_spacing = syls_json['median_line_spacing']
-        syls_dict = syls_json['syl_boxes']
+    median_line_spacing = syls_json['median_line_spacing']
+    syls_dict = syls_json['syl_boxes']
 
     syl_boxes = [
         {
-            'ulx':s['ul'][0],
-            'uly':s['ul'][1],
-            'lrx':s['lr'][0],
-            'lry':s['lr'][1],
-            'syl':s['syl']
+            'ulx': int(s['ul'][0]),
+            'uly': int(s['ul'][1]),
+            'lrx': int(s['lr'][0]),
+            'lry': int(s['lr'][1]),
+            'syl': s['syl']
         }
         for s
         in syls_dict]
@@ -102,15 +87,15 @@ if __name__ == '__main__':
 
         # of all the colliding syllable boxes, take the one with largest collision amount
         if colliding_syls:
-            # leftmost_colliding_text = min(colliding_syls, key=lambda x: x[1][0])
-            leftmost_colliding_text = max(colliding_syls, key=lambda s: intersect(s, trans_bbox))
-            prev_assigned_text = leftmost_colliding_text
+            # best_colliding_text = min(colliding_syls, key=lambda x: x[1][0])
+            best_colliding_text = max(colliding_syls, key=lambda s: intersect(s, trans_bbox))
+            prev_assigned_text = best_colliding_text
         else:
-            leftmost_colliding_text = None
+            best_colliding_text = None
 
         # if there is no text OR if the found text is the same as last time then the neume being
         # considered here is linked to the previous syllable.
-        if (not leftmost_colliding_text) or (leftmost_colliding_text == prev_text):
+        if (not best_colliding_text) or (best_colliding_text == prev_text):
             cur_syllable.addChild(neume)
             elements_to_remove.append(se)
         # if the text found in the collision is new, then we're starting a new text syllable. register
@@ -119,22 +104,49 @@ if __name__ == '__main__':
             cur_syllable = se
 
             text_el = MeiElement('syl')
-            text_el.setValue(str(leftmost_colliding_text['syl']))
+            text_el.setValue(str(best_colliding_text['syl']))
 
             zone_el = MeiElement('zone')
-            zone_el.addAttribute('ulx', str(leftmost_colliding_text['ulx']))
-            zone_el.addAttribute('uly', str(leftmost_colliding_text['uly']))
-            zone_el.addAttribute('lrx', str(leftmost_colliding_text['lrx']))
-            zone_el.addAttribute('lry', str(leftmost_colliding_text['lry']))
+            zone_el.addAttribute('ulx', str(best_colliding_text['ulx']))
+            zone_el.addAttribute('uly', str(best_colliding_text['uly']))
+            zone_el.addAttribute('lrx', str(best_colliding_text['lrx']))
+            zone_el.addAttribute('lry', str(best_colliding_text['lry']))
             text_el.addAttribute('facs', zone_el.id)
 
             cur_syllable.addChild(text_el)
             surface.addChild(zone_el)
 
-        prev_text = leftmost_colliding_text
+        prev_text = best_colliding_text
 
     # remove syllable elements that just held neumes and are now duplicates
     for el in elements_to_remove:
         el.parent.removeChild(el)
 
+    if return_text:
+        return documentToText(mei_doc)
+    else:
+        return mei_doc
+
+
+if __name__ == '__main__':
+
+    fname = 'salzinnes_15'
+    inJSOMR = './jsomr_files/pitches_{}.json'.format(fname)
+    in_syls = './json_syls/syls_{}.json'.format(fname)
+
+    kwargs = {
+        'max_neume_spacing': 0.3,
+        'max_group_size': 8,
+        'mei_version': '4.0.0',
+    }
+
+    with open(inJSOMR, 'r') as file:
+        jsomr = json.loads(file.read())
+        mei_obj = MeiOutput(jsomr, **kwargs)
+        mei_doc = mei_obj._createDoc(return_text=False)
+
+    with open(in_syls) as file:
+        syls_json = json.loads(file.read())
+
+    add_syllables_to_doc(mei_doc, syls_json)
     documentToFile(mei_doc, 'output_{}.mei'.format(fname))

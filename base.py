@@ -2,6 +2,7 @@ from rodan.jobs.base import RodanTask
 
 from gamera.core import Image
 from MeiOutput import MeiOutput
+from addSyllableText import add_syllables_to_doc
 import json
 
 
@@ -47,7 +48,14 @@ class JSOMR2MEI(RodanTask):
         'minimum': 1,
         'maximum': 1,
         'is_list': False
-    }]
+    }, {
+        'name': 'Text Alignment JSON',
+        'resource_types': ['application/json'],
+        'minimum': 1,
+        'maximum': 1,
+        'is_list': False
+    }
+    ]
 
     output_port_types = [{
         'name': 'MEI',
@@ -62,16 +70,23 @@ class JSOMR2MEI(RodanTask):
         with open(inputs['JSOMR'][0]['resource_path'], 'r') as file:
             jsomr = json.loads(file.read())
 
+        with open(inputs['Text Alignment JSON'][0]['resource_path'], 'r') as file:
+            syls_json = json.loads(file.read())
+
         kwargs = {
             'mei_version': str(settings['MEI Version']),
             'max_neume_spacing': settings['Maximum Neume Spacing'],
             'max_group_size': settings['Neume Grouping Size'],
         }
 
-        # do job
+        # parse JSOMR into an mei document
         mei_obj = MeiOutput(jsomr, **kwargs)
-        mei_string = mei_obj.run()
+        mei_doc = mei_obj.run()
 
+        # add syllable information into mei document
+        mei_string = add_syllables_to_doc(mei_doc, syls_json, return_text=True)
+
+        # write document to file
         outfile_path = outputs['MEI'][0]['resource_path']
         with open(outfile_path, 'w') as file:
             file.write(mei_string)

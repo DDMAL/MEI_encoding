@@ -27,8 +27,13 @@ class MeiOutput(object):
     # Public Functions
     ####################
 
-    def run(self):
-        return self._createDoc()
+    def run(self, return_text=False):
+        meiDoc = MeiDocument(self.version)
+        self._generate_music(meiDoc)
+        if return_text:
+            return documentToText(meiDoc)
+        else:
+            return meiDoc
 
     #####################
     # Utility Functions
@@ -40,7 +45,6 @@ class MeiOutput(object):
                 el.addAttribute(a, attributes[a])
 
     def _avg_punctum(self, punctums):
-
         width_sum = 0
         for p in punctums:
             width_sum += p['glyph']['bounding_box']['ncols']
@@ -49,28 +53,6 @@ class MeiOutput(object):
     ##################
     # MEI Generators
     ##################
-
-    def _createDoc(self, return_text=True):
-
-        meiDoc = MeiDocument(self.version)
-        self._generate_music(meiDoc)
-        if return_text:
-            return documentToText(meiDoc)
-        else:
-            return meiDoc
-
-    # def _generate_mei(self, parent):
-    #     el = MeiElement("mei")
-    #     parent.root = el
-    #
-    #     # no mei header element needed!
-    #     # self._generate_meiHead(el)
-    #     self._generate_music(el)
-
-    # def _generate_meiHead(self, parent):
-    #     el = MeiElement("meiHead")
-    #
-    #     parent.addChild(el)
 
     def _generate_music(self, parent):
         el = MeiElement("music")
@@ -668,11 +650,11 @@ if __name__ == "__main__":
             jsomr = json.loads(file.read())
 
         mei_obj = MeiOutput(jsomr, **kwargs)
-        mei_string = mei_obj.run()
-        mei_doc = mei_obj._createDoc(return_text=False)
+        mei_string = mei_obj.run(return_text=True)
 
         with open('output.mei', 'w') as file:
             file.write(mei_string)
+
     elif os.path.isdir(inJSOMR):
         files = [x for x in os.listdir(inJSOMR) if '.json' in x[-5:]]
         for f in files:
@@ -684,7 +666,7 @@ if __name__ == "__main__":
             print('processing {}...'.format(f))
 
             mei_obj = MeiOutput(jsomr, **kwargs)
-            mei_string = mei_obj.run()
+            mei_doc = mei_obj.run(return_text=True)
 
             with open('output_{}.mei'.format(f), 'w') as file:
                 file.write(mei_string)
