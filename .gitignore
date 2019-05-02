@@ -1,5 +1,6 @@
 jsomr-env/
 jsomr_files/
+syl_json/
 *.mei
 *.rng
 *.DS_Store

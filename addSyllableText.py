@@ -132,7 +132,7 @@ if __name__ == '__main__':
 
     fname = 'salzinnes_15'
     inJSOMR = './jsomr_files/pitches_{}.json'.format(fname)
-    in_syls = './json_syls/syls_{}.json'.format(fname)
+    in_syls = './syl_json/{}.json'.format(fname)
 
     kwargs = {
         'max_neume_spacing': 0.3,
@@ -143,7 +143,7 @@ if __name__ == '__main__':
     with open(inJSOMR, 'r') as file:
         jsomr = json.loads(file.read())
         mei_obj = MeiOutput(jsomr, **kwargs)
-        mei_doc = mei_obj._createDoc(return_text=False)
+        mei_doc = mei_obj.run(return_text=False)
 
     with open(in_syls) as file:
         syls_json = json.loads(file.read())

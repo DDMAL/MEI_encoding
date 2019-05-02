@@ -8,7 +8,7 @@ import json
 
 class JSOMR2MEI(RodanTask):
     name = 'JSOMR to MEI'
-    author = 'Noah Baxter'
+    author = 'Noah Baxter, Tim de Reuse'
     description = 'Generates an MEI file from a JSOMR file containing CC and pitch information'
     enabled = True
     category = "Encoding"
@@ -66,10 +66,10 @@ class JSOMR2MEI(RodanTask):
     }]
 
     def run_my_task(self, inputs, settings, outputs):
-
+        print('loading jsomr')
         with open(inputs['JSOMR'][0]['resource_path'], 'r') as file:
             jsomr = json.loads(file.read())
-
+        print('loading json alignment')
         with open(inputs['Text Alignment JSON'][0]['resource_path'], 'r') as file:
             syls_json = json.loads(file.read())
 
@@ -78,11 +78,12 @@ class JSOMR2MEI(RodanTask):
             'max_neume_spacing': settings['Maximum Neume Spacing'],
             'max_group_size': settings['Neume Grouping Size'],
         }
-
+        print('pass 1')
         # parse JSOMR into an mei document
         mei_obj = MeiOutput(jsomr, **kwargs)
         mei_doc = mei_obj.run()
 
+        print('pass 2')
         # add syllable information into mei document
         mei_string = add_syllables_to_doc(mei_doc, syls_json, return_text=True)
 

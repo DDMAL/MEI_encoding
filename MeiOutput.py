@@ -55,9 +55,26 @@ class MeiOutput(object):
     ##################
 
     def _generate_music(self, parent):
+        mei = MeiElement("mei")
+        mei.addAttribute("meiversion", self.mei_version)
+        parent.root = mei
+
+        # generate placeholder meiHead
+        meihead = MeiElement('meiHead')
+        mei.addChild(meihead)
+        fileDesc = MeiElement('fileDesc')
+        meihead.addChild(fileDesc)
+        titleSt = MeiElement('titleStmt')
+        fileDesc.addChild(titleSt)
+        title = MeiElement('title')
+        titleSt.addChild(title)
+        title.setValue('MEI Encoding Output')
+
+        pubStmt = MeiElement('pubStmt')
+        fileDesc.addChild(pubStmt)
+
         el = MeiElement("music")
-        el.addAttribute("meiversion", self.mei_version)
-        parent.root = el
+        mei.addChild(el)
 
         self._generate_facsimile(el)
         self._generate_body(el)
@@ -637,7 +654,6 @@ if __name__ == "__main__":
         (tmp, inJSOMR) = sys.argv
     else:
         print("incorrect usage\npython3 main.py")
-        quit()
 
     kwargs = {
         'max_neume_spacing': 0.3,
