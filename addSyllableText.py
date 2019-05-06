@@ -1,7 +1,6 @@
 import json
-from MeiOutput import MeiOutput
+import MeiOutput
 from pymei import MeiDocument, MeiElement, documentToText, documentToFile
-
 
 def intersect(bb1, bb2):
     # dx = min(lr1[1], lr2[1]) - max(ul1[1], ul2[1])
@@ -129,24 +128,32 @@ def add_syllables_to_doc(mei_doc, syls_json, return_text=False):
 
 
 if __name__ == '__main__':
+    import os
+    reload(MeiOutput)
 
-    fname = 'salzinnes_15'
-    inJSOMR = './jsomr_files/pitches_{}.json'.format(fname)
-    in_syls = './syl_json/{}.json'.format(fname)
+    f_inds = range(10, 19)
+    for f_ind in f_inds:
+        fname = 'salzinnes_{}'.format(f_ind)
+        inJSOMR = './jsomr_files/pitches_{}.json'.format(fname)
+        in_syls = './syl_json/{}.json'.format(fname)
 
-    kwargs = {
-        'max_neume_spacing': 0.3,
-        'max_group_size': 8,
-        'mei_version': '4.0.0',
-    }
+        if not os.path.isfile(inJSOMR) or not os.path.isfile(in_syls):
+            continue
 
-    with open(inJSOMR, 'r') as file:
-        jsomr = json.loads(file.read())
-        mei_obj = MeiOutput(jsomr, **kwargs)
-        mei_doc = mei_obj.run(return_text=False)
+        print('processing {}...'.format(fname))
+        kwargs = {
+            'max_neume_spacing': 0.3,
+            'max_group_size': 8,
+            'mei_version': '4.0.0',
+        }
 
-    with open(in_syls) as file:
-        syls_json = json.loads(file.read())
+        with open(inJSOMR, 'r') as file:
+            jsomr = json.loads(file.read())
+            mei_obj = MeiOutput.MeiOutput(jsomr, **kwargs)
+            mei_doc = mei_obj.run(return_text=False)
 
-    add_syllables_to_doc(mei_doc, syls_json)
-    documentToFile(mei_doc, 'output_{}.mei'.format(fname))
+        with open(in_syls) as file:
+            syls_json = json.loads(file.read())
+
+        add_syllables_to_doc(mei_doc, syls_json)
+        documentToFile(mei_doc, 'output_{}.mei'.format(fname))

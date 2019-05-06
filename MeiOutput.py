@@ -152,7 +152,7 @@ class MeiOutput(object):
         parent.addChild(el)
 
         el.addAttribute('n', '1')   # use first staff parameters
-        # el.addAttribute('lines', str(self.incoming_data['staves'][0]['num_lines']))
+        el.addAttribute('lines', str(self.incoming_data['staves'][0]['num_lines']))
         el.addAttribute('notationtype', 'neume')
         el.addAttribute('clef.line', '3')
         el.addAttribute('clef.shape', 'C')
@@ -328,17 +328,15 @@ class MeiOutput(object):
         if 'punctum' in name:
             pass
 
-        # differences in encoding inclinatums and ligatures in mei_versions 4:
         elif 'inclinatum' in name:
             if int(self.mei_version[0]) >= 4:
                 el.addAttribute('tilt', 'se')
             else:
                 el.addAttribute('name', 'inclinatum')
-        elif 'ligature' in name:
-            if int(self.mei_version[0]) >= 4:
-                el.addAttribute('ligated', 'true')
-            else:
-                el.addAttribute('ligature', 'true')
+        elif 'ligature' in name or 'oblique' in name:
+
+            lig_att = 'ligated' if int(self.mei_version[0]) >= 4 else 'ligature'
+            el.addAttribute(lig_att, 'true')
 
             # generate second part of ligature
             el2 = MeiElement("nc")
@@ -347,18 +345,13 @@ class MeiOutput(object):
 
             zoneId = self._generate_zone(self.surface, bounding_box)
             el2.addAttribute('facs', zoneId)
-
-            el2.addAttribute('pname', relativePitch[0])
-            el2.addAttribute('oct', relativePitch[1])
-            if int(self.mei_version[0]) >= 4:
-                el2.addAttribute('ligated', 'true')
-            else:
-                el2.addAttribute('ligature', 'true')
+            el2.addAttribute('pname', str(relativePitch[0]))
+            el2.addAttribute('oct', str(relativePitch[1]))
+            el2.addAttribute(lig_att, 'true')
 
     ##################
     # Complex Neumes
     ##################
-
     def _get_new_pitch(self, startPitch, contour, interval):
         (startNote, startOctave, clef) = startPitch
 
@@ -380,11 +373,11 @@ class MeiOutput(object):
             newOctave = startOctave
             newNote = startNote
 
-        return [newNote, str(newOctave), clef]
+        return [str(newNote), str(newOctave), str(clef)]
 
     def _get_relative_pitch(self, pitch, name):
-        if 'ligature' in name:   # if ligature, find/return lower pitch
-            return self._get_new_pitch(pitch, 'd', name.split('ligature')[1])
+        if 'oblique' in name:   # if ligature, find/return lower pitch
+            return self._get_new_pitch(pitch, 'd', name.split('oblique')[1])
         else:
             return pitch
 
