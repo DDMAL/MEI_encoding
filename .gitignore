@@ -114,3 +114,4 @@ ENV/
 ignore
 venv*
 .pytest_cache/
+output.mei

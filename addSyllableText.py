@@ -2,9 +2,12 @@ import json
 import MeiOutput
 from pymei import MeiDocument, MeiElement, documentToText, documentToFile
 
+
 def intersect(bb1, bb2):
-    # dx = min(lr1[1], lr2[1]) - max(ul1[1], ul2[1])
-    # dy = min(lr1[0], lr2[0]) - max(ul1[0], ul2[0])
+    '''
+    takes two bounding boxes as an argument. if they overlap, return the area of the overlap;
+    else, return False
+    '''
     dx = min(bb1['lrx'], bb2['lrx']) - max(bb1['ulx'], bb2['ulx'])
     dy = min(bb1['lry'], bb2['lry']) - max(bb1['uly'], bb2['uly'])
     if (dx > 0) and (dy > 0):
@@ -131,7 +134,7 @@ if __name__ == '__main__':
     import os
     reload(MeiOutput)
 
-    f_inds = range(10, 19)
+    f_inds = range(10, 15)
     for f_ind in f_inds:
         fname = 'salzinnes_{}'.format(f_ind)
         inJSOMR = './jsomr_files/pitches_{}.json'.format(fname)
