@@ -119,6 +119,7 @@ def add_syllables_to_doc(mei_doc, syls_json, return_text=False):
             surface.addChild(zone_el)
 
         prev_text = best_colliding_text
+        assign_lines.append([prev_assigned_text, neume_bbox])
 
     # remove syllable elements that just held neumes and are now duplicates
     for el in elements_to_remove:
@@ -127,18 +128,44 @@ def add_syllables_to_doc(mei_doc, syls_json, return_text=False):
     if return_text:
         return documentToText(mei_doc)
     else:
-        return mei_doc
+        return mei_doc, assign_lines
 
+
+def draw_neume_alignment(fname, boxes):
+    import PIL
+    from PIL import Image, ImageDraw, ImageFont, ImageChops
+
+    im = Image.open(fname).convert('RGB')
+    draw = ImageDraw.Draw(im)
+
+    last_text = None
+    for tb, nb in boxes:
+
+        if not (tb is None):
+            last_text = tb
+
+        t = last_text
+        draw.rectangle([t['ulx'], t['uly'], t['lrx'], t['lry']], outline='black')
+        draw.rectangle([nb['ulx'], nb['uly'], nb['lrx'], nb['lry']], outline='black')
+
+        pt1 = ((t['ulx'] + t['lrx']) // 2, (t['lry'] + t['uly']) // 2)
+        pt2 = ((nb['ulx'] + nb['lrx']) // 2, (nb['lry'] + nb['uly']) // 2)
+
+        if pt1[1] > pt2[1]:
+            draw.line([pt1, pt2], fill='black', width=10)
+
+    im.save('neume_alignment_asdf.png')
 
 if __name__ == '__main__':
     import os
     reload(MeiOutput)
 
-    f_inds = range(10, 15)
+    f_inds = [31]  # range(10, 38)
     for f_ind in f_inds:
         fname = 'salzinnes_{}'.format(f_ind)
-        inJSOMR = './jsomr_files/pitches_{}.json'.format(fname)
+        inJSOMR = './jsomr-split/pitches_{}.json'.format(fname)
         in_syls = './syl_json/{}.json'.format(fname)
+        in_png = './png/{}.png'.format(fname)
 
         if not os.path.isfile(inJSOMR) or not os.path.isfile(in_syls):
             continue
@@ -158,5 +185,8 @@ if __name__ == '__main__':
         with open(in_syls) as file:
             syls_json = json.loads(file.read())
 
-        add_syllables_to_doc(mei_doc, syls_json)
-        documentToFile(mei_doc, 'output_{}.mei'.format(fname))
+        mei_doc, boxes = add_syllables_to_doc(mei_doc, syls_json)
+        documentToFile(mei_doc, 'output_split_{}.mei'.format(fname))
+
+        if os.path.isfile(in_png):
+            draw_neume_alignment(in_png, boxes)

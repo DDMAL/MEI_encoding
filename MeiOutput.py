@@ -10,7 +10,6 @@ class MeiOutput(object):
         self.incoming_data = incoming_data
         self.version = kwargs['mei_version']
 
-
         # for storing during generation
         self.surface = False
 
