@@ -2,6 +2,7 @@ jsomr*/
 syl_json/
 *.mei
 *.rng
+*.jpg
 *.DS_Store
 
 # test files

@@ -82,8 +82,8 @@ def add_syllables_to_doc(mei_doc, syls_json, return_text=False):
         # translate this bounding box downwards by half the height of a line
         # this should put well-positioned neumes right in the middle of the text they're associated with
         trans_bbox = dict(neume_bbox)
-        trans_bbox['lry'] += median_line_spacing
-        trans_bbox['uly'] += median_line_spacing // 2
+        trans_bbox['lry'] += median_line_spacing // 1.5
+        trans_bbox['uly'] += 1 # median_line_spacing
 
         colliding_syls = [s for s in syl_boxes if intersect(s, trans_bbox)]
 
@@ -131,9 +131,9 @@ def add_syllables_to_doc(mei_doc, syls_json, return_text=False):
         return mei_doc, assign_lines
 
 
-def draw_neume_alignment(fname, boxes):
+def draw_neume_alignment(fname, boxes, out_fname):
     import PIL
-    from PIL import Image, ImageDraw, ImageFont, ImageChops
+    from PIL import Image, ImageDraw, ImageFont, ImageOps
 
     im = Image.open(fname).convert('RGB')
     draw = ImageDraw.Draw(im)
@@ -143,9 +143,12 @@ def draw_neume_alignment(fname, boxes):
 
         if not (tb is None):
             last_text = tb
+        if last_text is None:
+            continue
 
         t = last_text
-        draw.rectangle([t['ulx'], t['uly'], t['lrx'], t['lry']], outline='black')
+        for i in range(4):
+            draw.rectangle([t['ulx'] - i, t['uly'] - i, t['lrx'] + i, t['lry'] + i], outline='black')
         draw.rectangle([nb['ulx'], nb['uly'], nb['lrx'], nb['lry']], outline='black')
 
         pt1 = ((t['ulx'] + t['lrx']) // 2, (t['lry'] + t['uly']) // 2)
@@ -154,18 +157,19 @@ def draw_neume_alignment(fname, boxes):
         if pt1[1] > pt2[1]:
             draw.line([pt1, pt2], fill='black', width=10)
 
-    im.save('neume_alignment_asdf.png')
+    im.save('neume_alignment_{}.jpg'.format(out_fname), quality=20, optimize=True)
+
 
 if __name__ == '__main__':
     import os
     reload(MeiOutput)
 
-    f_inds = [31]  # range(10, 38)
+    f_inds = range(80, 120)
     for f_ind in f_inds:
-        fname = 'salzinnes_{}'.format(f_ind)
+        fname = 'salzinnes_{:0>3}'.format(f_ind)
         inJSOMR = './jsomr-split/pitches_{}.json'.format(fname)
         in_syls = './syl_json/{}.json'.format(fname)
-        in_png = './png/{}.png'.format(fname)
+        in_png = '/Users/tim/Desktop/PNG_compressed/CF-{:0>3}.png'.format(f_ind)
 
         if not os.path.isfile(inJSOMR) or not os.path.isfile(in_syls):
             continue
@@ -186,7 +190,7 @@ if __name__ == '__main__':
             syls_json = json.loads(file.read())
 
         mei_doc, boxes = add_syllables_to_doc(mei_doc, syls_json)
-        documentToFile(mei_doc, 'output_split_{}.mei'.format(fname))
+        documentToFile(mei_doc, './out_mei/output_split_{}.mei'.format(fname))
 
         if os.path.isfile(in_png):
-            draw_neume_alignment(in_png, boxes)
+            draw_neume_alignment(in_png, boxes, fname)
