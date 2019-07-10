@@ -25,6 +25,7 @@ median_line_spacing = syls['median_line_spacing']
 # sort glyphs in lexicographical order by staff #, left to right
 glyphs.sort(key=lambda x: (int(x['pitch']['staff']), int(x['pitch']['offset'])))
 
+
 glyphs_pos = 0
 num_glyphs = len(glyphs)
 
@@ -48,13 +49,17 @@ for box in syl_boxes:
         continue
 
     nearest_glyph = min(above_glyphs, key=lambda g: g['glyph']['bounding_box']['ulx'])
-    print(nearest_glyph['glyph']['bounding_box'])
+    # print(nearest_glyph['glyph']['bounding_box'])
     starts.append(glyphs.index(nearest_glyph))
     last_used = max(starts)
 
 starts.append(len(glyphs))
 for i in range(len(starts) - 1):
-    pairs.append((syl_boxes[i], glyphs[starts[i]:starts[i+1]]))
+    for j in range(starts[i], starts[i+1]):
+        assignment = None
+        if 'neume' in glyphs[j]['glyph']['name']:
+            assignment = syl_boxes[i]
+        pairs.append((glyphs[j], assignment))
 
 
 def draw_neume_alignment(in_png, pairs, text_size=60):
@@ -65,19 +70,16 @@ def draw_neume_alignment(in_png, pairs, text_size=60):
     draw = ImageDraw.Draw(im)
 
     last_text = None
-    for tb, gbs in pairs:
-
-        bbs = [
-            g['glyph']['bounding_box'] for g in gbs
-            if 'neume' in g['glyph']['name']
-            ]
+    for gb, tb in pairs:
+        if not tb:
+            continue
+        bb = gb['glyph']['bounding_box']
 
         draw.rectangle(tb['ul'] + tb['lr'], outline='black')
         draw.text(tb['ul'], tb['syl'], font=fnt, fill='gray')
-        for bb in bbs:
-            pt1 = (bb['ulx'] + bb['ncols'] // 2, bb['uly'] + bb['nrows'] // 2)
-            pt2 = ((tb['ul'][0] + tb['lr'][0]) // 2, (tb['ul'][1] + tb['lr'][1]) // 2)
-            draw.line((pt1, pt2), fill='black', width=5)
+        pt1 = (bb['ulx'] + bb['ncols'] // 2, bb['uly'] + bb['nrows'] // 2)
+        pt2 = ((tb['ul'][0] + tb['lr'][0]) // 2, (tb['ul'][1] + tb['lr'][1]) // 2)
+        draw.line((pt1, pt2), fill='black', width=5)
     im.show()
 
 
@@ -85,16 +87,15 @@ def add_attributes_to_element(el, add):
     for key in add.keys():
         if not add[key] or add[key] == 'None':
             continue
-        el.addAttribute(key, add[key])
+        el.addAttribute(key, str(add[key]))
     return el
 
 
 def create_primitive_element(xml, glyph, surface):
-    name = str(glyph['glyph']['name'])
-    if name.index('.'):
-        name = name[:name.index('.')]
-
-    res = MeiElement(name)
+    '''
+    creates
+    '''
+    res = MeiElement(xml.tag)
     attribs = xml.attrib
 
     attribs['line'] = str(glyph['pitch']['strt_pos'])
@@ -118,8 +119,10 @@ def glyph_to_element(classifier, glyph, surface):
     '''
     name = str(glyph['glyph']['name'])
     xml = classifier[name]
-    if name.index('.'):
+    try:
         name = name[:name.index('.')]
+    except ValueError:
+        pass
 
     # if this is an element with no children, then just apply a pitch and position to it
     if not list(xml):
@@ -141,13 +144,16 @@ def glyph_to_element(classifier, glyph, surface):
         new_pname, new_octave = resolve_interval(prev_nc, cur_nc)
         cur_nc.addAttribute('pname', new_pname)
         cur_nc.addAttribute('octave', new_octave)
+        cur_nc.removeAttribute('intm')
 
     return parent
 
 
 def resolve_interval(prev_nc, cur_nc):
+
+    scale = ['c', 'd', 'e', 'f', 'g', 'a', 'b']
+
     interval = cur_nc.getAttribute('intm').value
-    print(interval)
     try:
         interval = interval.lower().replace('s', '')
         interval = int(interval)
@@ -158,23 +164,40 @@ def resolve_interval(prev_nc, cur_nc):
 
     starting_pitch = prev_nc.getAttribute('pname').value
     starting_octave = prev_nc.getAttribute('octave').value
-    new_octave = starting_octave
+    end_octave = starting_octave
 
-    new_pitch = ord(starting_pitch) - ord('a') + interval
+    try:
+        start_index = scale.index(starting_pitch)
+    except ValueError:
+        print('pname {} is not in scale {}!'.format(starting_pitch, scale))
+        return
 
-    if new_pitch >= 7:
-        new_octave += 1
-    elif new_pitch < 0:
-        new_octave -= 1
+    end_idx = start_index + interval
 
-    new_pitch %= 7
-    new_pname = chr(new_pitch + ord('a'))
+    if end_idx >= len(scale):
+        end_octave += 1
+    elif end_idx < 0:
+        end_octave -= 1
 
-    return new_pname, new_octave
+    end_idx %= len(scale)
+    end_pname = scale[end_idx]
+
+    return end_pname, end_octave
 
 
 def generate_zone(surface, bb):
-    return str(np.random.randint(0, 10e10))
+    el = MeiElement('zone')
+    surface.addChild(el)
+
+    attribs = {
+        'ulx': bb['ulx'],
+        'uly': bb['uly'],
+        'lrx': bb['ulx'] + bb['ncols'],
+        'lry': bb['uly'] + bb['nrows'],
+    }
+
+    el = add_attributes_to_element(el, attribs)
+    return el.getId()
 
 
 # draw_neume_alignment(in_png, pairs)
@@ -242,14 +265,38 @@ section.addChild(staff)
 layer = MeiElement('layer')
 staff.addChild(layer)
 
-for tb, gs in pairs:
-    cur_syllable = MeiElement('syllable')
-    staff.addChild(cur_syllable)
-    syl = MeiElement('syl')
-    syl.setValue(str(tb['syl']))
+cur_staff = -1
+cur_syllable = None
+for gb, tb in pairs:
 
-    for glyph in gs:
-        new_el = glyph_to_element(classifier, glyph)
+    # if we're adding to the same syllable as is saved in cur_syllable, don't change anything
+    # if we've encountered a new syllable and we're in a syllable, stop this one + add to a new one
+    # if we're ending a syllable and not starting a new one, add directly to layer
+    # if we're not in a syllable and encountering a new one, add to a new one
+    new_el = glyph_to_element(classifier, glyph, surface)
+
+# for tb, gs in pairs:
+#     cur_syllable = MeiElement('syllable')
+#     staff.addChild(cur_syllable)
+#     syl = MeiElement('syl')
+#     syl.setValue(str(tb['syl']))
+#
+#     for glyph in gs:
+#
+#         # first check if we're on a new line and perform a system break if so
+#         if glyph['pitch']['staff'] > cur_staff_line:
+#             cur_staff = glyph['pitch']['staff']
+#             sb = MeiElement('sb')
+#             zoneId = generate_zone(surface, jsomr['staves'][cur_staff]['bounding_box'])
+#             sb.addAttribute('facs', zoneId)
+#             cur_syllable.addChild(sb)
+#
+#         new_el = glyph_to_element(classifier, glyph, surface)
+#
+#         # as far as I can tell right now - we have to have a special case just for custos, because
+#         # they should go INSIDE the <sb> tag if we're within a syllable.
+#
+#         cur_syllable.addChild(new_el)
 
 
 documentToFile(meiDoc, 'testexport.mei')
