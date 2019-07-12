@@ -20,6 +20,7 @@ with open(in_syls) as file:
 
 glyphs = jsomr['glyphs']
 syl_boxes = syls['syl_boxes']
+staves = jsomr['staves']
 median_line_spacing = syls['median_line_spacing']
 
 # sort glyphs in lexicographical order by staff #, left to right
@@ -53,13 +54,15 @@ for box in syl_boxes:
     starts.append(glyphs.index(nearest_glyph))
     last_used = max(starts)
 
+for i in range(len(glyphs)):
+    if i + 1 == len(glyphs) or int(glyphs[i]['pitch']['staff']) < int(glyphs[i + 1]['pitch']['staff']):
+        glyphs[i]['system_begin'] = True
+    else:
+        glyphs[i]['system_begin'] = False
+
 starts.append(len(glyphs))
 for i in range(len(starts) - 1):
-    for j in range(starts[i], starts[i+1]):
-        assignment = None
-        if 'neume' in glyphs[j]['glyph']['name']:
-            assignment = syl_boxes[i]
-        pairs.append((glyphs[j], assignment))
+    pairs.append((glyphs[starts[i]:starts[i+1]], syl_boxes[i]))
 
 
 def draw_neume_alignment(in_png, pairs, text_size=60):
@@ -265,38 +268,109 @@ section.addChild(staff)
 layer = MeiElement('layer')
 staff.addChild(layer)
 
-cur_staff = -1
-cur_syllable = None
-for gb, tb in pairs:
+for gs, syl_box in pairs:
+    cur_syllable = MeiElement('syllable')
+    layer.addChild(cur_syllable)
+    syl = MeiElement('syl')
+    syl.setValue(str(syl_box['syl']))
+    cur_syllable.addChild(syl)
 
-    # if we're adding to the same syllable as is saved in cur_syllable, don't change anything
-    # if we've encountered a new syllable and we're in a syllable, stop this one + add to a new one
-    # if we're ending a syllable and not starting a new one, add directly to layer
-    # if we're not in a syllable and encountering a new one, add to a new one
-    new_el = glyph_to_element(classifier, glyph, surface)
+    for i, glyph in enumerate(gs):
 
-# for tb, gs in pairs:
-#     cur_syllable = MeiElement('syllable')
-#     staff.addChild(cur_syllable)
-#     syl = MeiElement('syl')
-#     syl.setValue(str(tb['syl']))
-#
-#     for glyph in gs:
-#
-#         # first check if we're on a new line and perform a system break if so
-#         if glyph['pitch']['staff'] > cur_staff_line:
-#             cur_staff = glyph['pitch']['staff']
-#             sb = MeiElement('sb')
-#             zoneId = generate_zone(surface, jsomr['staves'][cur_staff]['bounding_box'])
-#             sb.addAttribute('facs', zoneId)
-#             cur_syllable.addChild(sb)
-#
-#         new_el = glyph_to_element(classifier, glyph, surface)
-#
-#         # as far as I can tell right now - we have to have a special case just for custos, because
-#         # they should go INSIDE the <sb> tag if we're within a syllable.
-#
-#         cur_syllable.addChild(new_el)
+        # are we done with neume components in this grouping?
+        syllable_over = not any(('neume' in x['glyph']['name']) for x in gs[i:])
+        new_el = glyph_to_element(classifier, glyph, surface)
 
+        if not glyph['system_begin']:
+            if syllable_over:
+                layer.addChild(new_el)
+            else:
+                cur_syllable.addChild(new_el)
+            continue
+
+        sb = MeiElement('sb')
+        cur_staff = int(glyph['pitch']['staff']) - 1
+        zoneId = generate_zone(surface, jsomr['staves'][cur_staff]['bounding_box'])
+        sb.addAttribute('facs', zoneId)
+
+        if syllable_over:
+            sb.addAttribute('facs', zoneId)
+            layer.addChild(new_el)
+            layer.addChild(sb)
+        elif 'custos' in glyph['glyph']['name']:
+            sb.addChild(new_el)
+            cur_syllable.addChild(sb)
+        else:
+            cur_syllable.addChild(new_el)
+            cur_syllable.addChild(sb)
+
+
+
+
+        # if syllable is over, add directly to layer
+
+        # if syllable not over, add to cur_syllable
+
+
+
+
+
+# cur_staff = -1
+# cur_syl_box = None
+# cur_syl_el = None
+# for i in range(len(pairs)):
+#
+#     glyph, syl_box = pairs[i]
+#     next_glyph, next_syl_box = pairs[i + 1] if i < len(pairs) else (None, None)
+#
+#     # first check if we're on a new line
+#     this_staff = glyph['pitch']['staff']
+#     next_staff = next_glyph['pitch']['staff'] if i < len(pairs) else -1
+#     if this_staff < next_staff:
+#         break_ = True
+#     else:
+#         about_to_line_break = False
+#
+#     if glyph_staff > cur_staff:
+#         sb = MeiElement('sb')
+#         zoneId = generate_zone(surface, staves[glyph_staff]['bounding_box'])
+#         sb.addAttribute('facs', zoneId)
+#         layer.addChild(sb)
+#
+#     # are we in the same syllable? then don't change anything
+#     if cur_syl_box == syl_box:
+#         pass
+#     # a different syllable, but still a neume? register a new syllable tag
+#     elif ('neume' in glyph['glyph']['name']):
+#         new_syl_el = MeiElement('syllable')
+#         layer.addChild(new_syl_el)
+#
+#         # register the new syllable as a zone in the surface
+#         bb = {
+#             'ulx': bb['ul'][0]
+#             'uly': bb['ul'][1]
+#             'nrows': bb['lr'][1] - bb['ul'][1]
+#             'ncols': bb['lr'][0] - bb['ul'][0]
+#         }
+#         zoneId = generate_zone(surface, bb)
+#         new_syl_el.addAttribute('facs', zoneId)
+#
+#         new_text_el = MeiElement('syl')
+#         new_text_el.setValue(syl_box['syl'])
+#
+#         new_syl_el.addChild(new_text_el)
+#         cur_syl_el = new_syl_el
+#         cur_syl_box = syl_box
+#     # not a neume?
+#     else:
+#         cur_syl_el = None
+#         cur_syl_box = None
+#
+#     new_el = glyph_to_element(classifier, glyph, surface)
+#
+#     if not cur_syl_el:
+#         layer.addChild(new_el)
+#     else:
+#         cur_syl_el.addChild(new_el)
 
 documentToFile(meiDoc, 'testexport.mei')
