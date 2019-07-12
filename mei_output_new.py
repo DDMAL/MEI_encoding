@@ -4,65 +4,39 @@ import json
 import parse_classifier_table as pct
 import matplotlib.pyplot as plt
 from pymei import MeiDocument, MeiElement, MeiAttribute, documentToText, documentToFile
+from itertools import groupby
 
-f_ind = 56
-classifier_fname = 'test_classifier.xlsx'
-fname = 'salzinnes_{:0>3}'.format(f_ind)
-inJSOMR = './jsomr-split/pitches_{}.json'.format(fname)
-in_syls = './syl_json/{}.json'.format(fname)
-in_png = '/Users/tim/Desktop/PNG_compressed/CF-{:0>3}.png'.format(f_ind)
+def neume_to_lyric_alignment(glyphs, syl_boxes, median_line_spacing):
 
+    glyphs_pos = 0
+    num_glyphs = len(glyphs)
 
-with open(inJSOMR, 'r') as file:
-    jsomr = json.loads(file.read())
-with open(in_syls) as file:
-    syls = json.loads(file.read())
+    pairs = []
+    starts = []
+    last_used = 0
+    for box in syl_boxes:
 
-glyphs = jsomr['glyphs']
-syl_boxes = syls['syl_boxes']
-staves = jsomr['staves']
-median_line_spacing = syls['median_line_spacing']
+        # assign each syllable to an ANCHOR GLYPH
+        above_glyphs = [
+            g for g in glyphs[last_used:] if
+            (box['ul'][1] - median_line_spacing < g['glyph']['bounding_box']['uly'] < box['ul'][1]) and
+            (box['ul'][0] < g['glyph']['bounding_box']['ulx'] + g['glyph']['bounding_box']['ncols'] // 2)
+            ]
 
-# sort glyphs in lexicographical order by staff #, left to right
-glyphs.sort(key=lambda x: (int(x['pitch']['staff']), int(x['pitch']['offset'])))
+        if not above_glyphs:
+            starts.append(last_used)
+            continue
 
+        nearest_glyph = min(above_glyphs, key=lambda g: g['glyph']['bounding_box']['ulx'])
+        # print(nearest_glyph['glyph']['bounding_box'])
+        starts.append(glyphs.index(nearest_glyph))
+        last_used = max(starts)
 
-glyphs_pos = 0
-num_glyphs = len(glyphs)
+    starts.append(len(glyphs))
+    for i in range(len(starts) - 1):
+        pairs.append((glyphs[starts[i]:starts[i+1]], syl_boxes[i]))
 
-# MAKE SURE THAT SYL_BOXES IS SORTED IN READING ORDER! (include more info in json)
-pairs = []
-starts = []
-last_used = 0
-for box in syl_boxes:
-
-    # assign each syllable to an ANCHOR GLYPH
-    above_glyphs = [
-        g for g in glyphs[last_used:] if
-        (box['ul'][1] - median_line_spacing < g['glyph']['bounding_box']['uly'] < box['ul'][1]) and
-        (box['ul'][0] < g['glyph']['bounding_box']['ulx'] + g['glyph']['bounding_box']['ncols'] // 2)
-        ]
-
-    print(last_used, box)
-
-    if not above_glyphs:
-        starts.append(last_used)
-        continue
-
-    nearest_glyph = min(above_glyphs, key=lambda g: g['glyph']['bounding_box']['ulx'])
-    # print(nearest_glyph['glyph']['bounding_box'])
-    starts.append(glyphs.index(nearest_glyph))
-    last_used = max(starts)
-
-for i in range(len(glyphs)):
-    if i + 1 == len(glyphs) or int(glyphs[i]['pitch']['staff']) < int(glyphs[i + 1]['pitch']['staff']):
-        glyphs[i]['system_begin'] = True
-    else:
-        glyphs[i]['system_begin'] = False
-
-starts.append(len(glyphs))
-for i in range(len(starts) - 1):
-    pairs.append((glyphs[starts[i]:starts[i+1]], syl_boxes[i]))
+    return pairs
 
 
 def draw_neume_alignment(in_png, pairs, text_size=60):
@@ -84,6 +58,73 @@ def draw_neume_alignment(in_png, pairs, text_size=60):
         pt2 = ((tb['ul'][0] + tb['lr'][0]) // 2, (tb['ul'][1] + tb['lr'][1]) // 2)
         draw.line((pt1, pt2), fill='black', width=5)
     im.show()
+
+
+def generate_base_document():
+
+    meiDoc = MeiDocument("4.0.0")
+
+    mei = MeiElement("mei")
+    mei.addAttribute("meiversion", "4.0.0")
+    meiDoc.root = mei
+
+    # placeholder meiHead
+    meihead = MeiElement('meiHead')
+    mei.addChild(meihead)
+    fileDesc = MeiElement('fileDesc')
+    meihead.addChild(fileDesc)
+    titleSt = MeiElement('titleStmt')
+    fileDesc.addChild(titleSt)
+    title = MeiElement('title')
+    titleSt.addChild(title)
+    title.setValue('MEI Encoding Output')
+    pubStmt = MeiElement('pubStmt')
+    fileDesc.addChild(pubStmt)
+
+    music = MeiElement("music")
+    mei.addChild(music)
+
+    facs = MeiElement("facsimile")
+    music.addChild(facs)
+
+    surface = MeiElement("surface")
+    facs.addChild(surface)
+
+    body = MeiElement('body')
+    music.addChild(body)
+
+    mdiv = MeiElement('mdiv')
+    body.addChild(mdiv)
+
+    score = MeiElement('score')
+    mdiv.addChild(score)
+
+    scoreDef = MeiElement('scoreDef')
+    score.addChild(scoreDef)
+
+    staffGrp = MeiElement('staffGrp')
+    scoreDef.addChild(staffGrp)
+
+    staffDef = MeiElement('staffDef')
+    staffGrp.addChild(staffDef)
+
+    # these hardcoded attributes define a single staff with 4 lines, neume notation, with a default c clef
+    staffDef.addAttribute('n', '1')
+    staffDef.addAttribute('lines', '4')
+    staffDef.addAttribute('notationtype', 'neume')
+    staffDef.addAttribute('clef.line', '3')
+    staffDef.addAttribute('clef.shape', 'C')
+
+    section = MeiElement('section')
+    score.addChild(section)
+
+    staff = MeiElement('staff')
+    section.addChild(staff)
+
+    layer = MeiElement('layer')
+    staff.addChild(layer)
+
+    return meiDoc, surface, layer
 
 
 def add_attributes_to_element(el, add):
@@ -203,174 +244,145 @@ def generate_zone(surface, bb):
     return el.getId()
 
 
-# draw_neume_alignment(in_png, pairs)
-classifier = pct.fetch_table(classifier_fname)
+def build_mei(glyphs, syl_boxes, staves, classifier, median_line_spacing):
 
-meiDoc = MeiDocument("4.0.0")
+    # MAKE SURE THAT SYL_BOXES IS SORTED IN READING ORDER! (include more info in json)
+    # sort glyphs in lexicographical order by staff #, left to right
+    glyphs.sort(key=lambda x: (int(x['pitch']['staff']), int(x['pitch']['offset'])))
 
-mei = MeiElement("mei")
-mei.addAttribute("meiversion", "4.0.0")
-meiDoc.root = mei
+    avg_glyph_width = np.mean([x['glyph']['bounding_box']['ncols'] for x in glyphs])
 
-# placeholder meiHead
-meihead = MeiElement('meiHead')
-mei.addChild(meihead)
-fileDesc = MeiElement('fileDesc')
-meihead.addChild(fileDesc)
-titleSt = MeiElement('titleStmt')
-fileDesc.addChild(titleSt)
-title = MeiElement('title')
-titleSt.addChild(title)
-title.setValue('MEI Encoding Output')
-pubStmt = MeiElement('pubStmt')
-fileDesc.addChild(pubStmt)
+    # add flag to every glyph denoting whether or not a line break should come immediately after
+    for i in range(len(glyphs)):
 
-music = MeiElement("music")
-mei.addChild(music)
+        glyphs[i]['system_begin'] = False
+        glyphs[i]['continue_neume'] = False
+        if i < len(glyphs) - 1:
 
-facs = MeiElement("facsimile")
-music.addChild(facs)
+            left_staff = int(glyphs[i]['pitch']['staff'])
+            right_staff = int(glyphs[i + 1]['pitch']['staff'])
 
-surface = MeiElement("surface")
-facs.addChild(surface)
+            if left_staff < right_staff:
+                glyphs[i]['system_begin'] = True
 
-body = MeiElement('body')
-music.addChild(body)
+        if i > 0:
+            left_bb = glyphs[i - 1]['glyph']['bounding_box'] if i > 0 else np.inf
+            right_bb = glyphs[i]['glyph']['bounding_box']
 
-mdiv = MeiElement('mdiv')
-body.addChild(mdiv)
+            if int(right_bb['ulx']) - (int(left_bb['ulx']) + int(left_bb['ncols'])) < avg_glyph_width:
+                glyphs[i]['continue_neume'] = True
 
-score = MeiElement('score')
-mdiv.addChild(score)
 
-scoreDef = MeiElement('scoreDef')
-score.addChild(scoreDef)
+    # get (syl, assigned glyphs) pairs
+    pairs = neume_to_lyric_alignment(glyphs, syl_boxes, median_line_spacing)
 
-staffGrp = MeiElement('staffGrp')
-scoreDef.addChild(staffGrp)
+    meiDoc, surface, layer = generate_base_document()
 
-staffDef = MeiElement('staffDef')
-staffGrp.addChild(staffDef)
+    for gs, syl_box in pairs:
+        cur_syllable = MeiElement('syllable')
+        bb = {
+            'ulx': syl_box['ul'][0],
+            'uly': syl_box['ul'][1],
+            'ncols': syl_box['lr'][0] - syl_box['ul'][0],
+            'nrows': syl_box['lr'][1] - syl_box['ul'][1],
+        }
+        zoneId = generate_zone(surface, bb)
+        cur_syllable.addAttribute('facs', zoneId)
+        layer.addChild(cur_syllable)
 
-# these hardcoded attributes define a single staff with 4 lines, neume notation, with a default c clef
-staffDef.addAttribute('n', '1')
-staffDef.addAttribute('lines', '4')
-staffDef.addAttribute('notationtype', 'neume')
-staffDef.addAttribute('clef.line', '3')
-staffDef.addAttribute('clef.shape', 'C')
+        syl = MeiElement('syl')
+        syl.setValue(str(syl_box['syl']))
+        cur_syllable.addChild(syl)
 
-section = MeiElement('section')
-score.addChild(section)
+        for i, glyph in enumerate(gs):
 
-staff = MeiElement('staff')
-section.addChild(staff)
+            # are we done with neume components in this grouping?
+            syllable_over = not any(('neume' in x['glyph']['name']) for x in gs[i:])
+            new_el = glyph_to_element(classifier, glyph, surface)
 
-layer = MeiElement('layer')
-staff.addChild(layer)
+            # four cases to consider:
+            # 1. no line break and not done with this syllable (more neume components to add)
+            # 2. no line break and done with this syllable (usually a clef)
+            # 3. a line break and not done with this syllable (a custos INSIDE a <syllable> tag)
+            # 4. a line break and done with this syllable (a custos OUTSIDE a <syllable> tag)
 
-for gs, syl_box in pairs:
-    cur_syllable = MeiElement('syllable')
-    layer.addChild(cur_syllable)
-    syl = MeiElement('syl')
-    syl.setValue(str(syl_box['syl']))
-    cur_syllable.addChild(syl)
+            if not glyph['system_begin']:
+                # case 2
+                if syllable_over:
+                    layer.addChild(new_el)
+                # case 1
+                else:
+                    cur_syllable.addChild(new_el)
+                continue
 
-    for i, glyph in enumerate(gs):
+            sb = MeiElement('sb')
+            cur_staff = int(glyph['pitch']['staff']) - 1
+            zoneId = generate_zone(surface, staves[cur_staff]['bounding_box'])
+            sb.addAttribute('facs', zoneId)
 
-        # are we done with neume components in this grouping?
-        syllable_over = not any(('neume' in x['glyph']['name']) for x in gs[i:])
-        new_el = glyph_to_element(classifier, glyph, surface)
-
-        if not glyph['system_begin']:
+            # case 3
             if syllable_over:
+                sb.addAttribute('facs', zoneId)
                 layer.addChild(new_el)
+                layer.addChild(sb)
+            elif 'custos' in glyph['glyph']['name']:
+                sb.addChild(new_el)
+                cur_syllable.addChild(sb)
+            # case 4
             else:
                 cur_syllable.addChild(new_el)
-            continue
+                cur_syllable.addChild(sb)
 
-        sb = MeiElement('sb')
-        cur_staff = int(glyph['pitch']['staff']) - 1
-        zoneId = generate_zone(surface, jsomr['staves'][cur_staff]['bounding_box'])
-        sb.addAttribute('facs', zoneId)
-
-        if syllable_over:
-            sb.addAttribute('facs', zoneId)
-            layer.addChild(new_el)
-            layer.addChild(sb)
-        elif 'custos' in glyph['glyph']['name']:
-            sb.addChild(new_el)
-            cur_syllable.addChild(sb)
-        else:
-            cur_syllable.addChild(new_el)
-            cur_syllable.addChild(sb)
+    return meiDoc
 
 
+if __name__ == '__main__':
+
+    f_ind = 56
+    classifier_fname = 'test_classifier.xlsx'
+    fname = 'salzinnes_{:0>3}'.format(f_ind)
+    inJSOMR = './jsomr-split/pitches_{}.json'.format(fname)
+    in_syls = './syl_json/{}.json'.format(fname)
+    in_png = '/Users/tim/Desktop/PNG_compressed/CF-{:0>3}.png'.format(f_ind)
+
+    classifier = pct.fetch_table(classifier_fname)
+
+    with open(inJSOMR, 'r') as file:
+        jsomr = json.loads(file.read())
+    with open(in_syls) as file:
+        syls = json.loads(file.read())
+
+    glyphs = jsomr['glyphs']
+    syl_boxes = syls['syl_boxes']
+    staves = jsomr['staves']
+    median_line_spacing = syls['median_line_spacing']
+
+    meiDoc = build_mei(glyphs, syl_boxes, staves, classifier, median_line_spacing)
+
+    all_syllables = meiDoc.getElementsByName('syllable')
+    # surface = meiDoc.getElementsByName('surface')[0]
+    # surf_dict = {}
+    # for c in surface.getChildren():
+    #     surf_dict[c.id] = c.getAttribute('ulx')
+
+    spacing_dict = {}
+
+    # mean_glyph_width = np.mean([x[1] - x[0] for x in surf_dict.values()])
+
+    for syllable in all_syllables:
+        children = syllable.getChildren()
+        nc_groups = []
+        for k, g in groupby(children, key=lambda x: x.name):
+            g = list(g)
+            if (not k == 'neume') or len(g) == 1:
+                continue
+            ncs_to_merge = []
+            for neume in g[1:]:
+                ncs_to_merge += neume.getChildren()
+            for nc in ncs_to_merge:
+                g[0].addChild(nc)
+            for neume in g[1:]:
+                syllable.removeChild(neume)
 
 
-        # if syllable is over, add directly to layer
-
-        # if syllable not over, add to cur_syllable
-
-
-
-
-
-# cur_staff = -1
-# cur_syl_box = None
-# cur_syl_el = None
-# for i in range(len(pairs)):
-#
-#     glyph, syl_box = pairs[i]
-#     next_glyph, next_syl_box = pairs[i + 1] if i < len(pairs) else (None, None)
-#
-#     # first check if we're on a new line
-#     this_staff = glyph['pitch']['staff']
-#     next_staff = next_glyph['pitch']['staff'] if i < len(pairs) else -1
-#     if this_staff < next_staff:
-#         break_ = True
-#     else:
-#         about_to_line_break = False
-#
-#     if glyph_staff > cur_staff:
-#         sb = MeiElement('sb')
-#         zoneId = generate_zone(surface, staves[glyph_staff]['bounding_box'])
-#         sb.addAttribute('facs', zoneId)
-#         layer.addChild(sb)
-#
-#     # are we in the same syllable? then don't change anything
-#     if cur_syl_box == syl_box:
-#         pass
-#     # a different syllable, but still a neume? register a new syllable tag
-#     elif ('neume' in glyph['glyph']['name']):
-#         new_syl_el = MeiElement('syllable')
-#         layer.addChild(new_syl_el)
-#
-#         # register the new syllable as a zone in the surface
-#         bb = {
-#             'ulx': bb['ul'][0]
-#             'uly': bb['ul'][1]
-#             'nrows': bb['lr'][1] - bb['ul'][1]
-#             'ncols': bb['lr'][0] - bb['ul'][0]
-#         }
-#         zoneId = generate_zone(surface, bb)
-#         new_syl_el.addAttribute('facs', zoneId)
-#
-#         new_text_el = MeiElement('syl')
-#         new_text_el.setValue(syl_box['syl'])
-#
-#         new_syl_el.addChild(new_text_el)
-#         cur_syl_el = new_syl_el
-#         cur_syl_box = syl_box
-#     # not a neume?
-#     else:
-#         cur_syl_el = None
-#         cur_syl_box = None
-#
-#     new_el = glyph_to_element(classifier, glyph, surface)
-#
-#     if not cur_syl_el:
-#         layer.addChild(new_el)
-#     else:
-#         cur_syl_el.addChild(new_el)
-
-documentToFile(meiDoc, 'testexport.mei')
+    documentToFile(meiDoc, 'testexport.mei')
