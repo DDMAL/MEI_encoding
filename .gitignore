@@ -3,6 +3,7 @@ syl_json/
 *.mei
 *.rng
 *.jpg
+*.png
 *.DS_Store
 
 # test files
