@@ -458,8 +458,8 @@ if __name__ == '__main__':
     import PIL
     from PIL import Image, ImageDraw, ImageFont, ImageOps
 
-    classifier_fname = 'test_classifier.xlsx'
-    classifier = pct.fetch_table(classifier_fname)
+    classifier_fname = 'csv-square notation test_20190725015554.csv'
+    classifier = pct.fetch_table_from_csv(classifier_fname)
 
     f_inds = range(0, 550)
 
