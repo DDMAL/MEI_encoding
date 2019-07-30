@@ -60,7 +60,11 @@ def neume_to_lyric_alignment(glyphs, syl_boxes, median_line_spacing):
     last_used = 0
     for box in syl_boxes:
 
-        # assign each syllable to an ANCHOR GLYPH
+        # assign each syllable to an ANCHOR GLYPH.
+        # for each syl_box, look for glyphs that
+        # 1) have not been assigned to a syl_box yet, and
+        # 2) are within a median line width above the current box, and
+        # 3) are to the right of the current box.
         above_glyphs = [
             g for g in glyphs[last_used:] if
             (box['ul'][1] - median_line_spacing < g['bounding_box']['uly'] < box['ul'][1]) and
@@ -71,10 +75,19 @@ def neume_to_lyric_alignment(glyphs, syl_boxes, median_line_spacing):
             starts.append(last_used)
             continue
 
+        # find the glyph in above_glyphs that is closest to the current box
         nearest_glyph = min(above_glyphs, key=lambda g: g['bounding_box']['ulx'])
-        # print(nearest_glyph['glyph']['bounding_box'])
+
+        # append the index of this glyph to the start positions list
         starts.append(glyphs.index(nearest_glyph))
         last_used = max(starts)
+
+    # if there are unassigned "orphan" glyphs at the beginning of the page, assign them all to a
+    # dummy syl_box so they can be detected later
+    if not starts[0] == 0:
+        pairs.append(
+            (glyphs[:starts[0]], {u'syl': '', u'ul': [0, 0], u'lr': [0, 0]})
+        )
 
     starts.append(len(glyphs))
     for i in range(len(starts) - 1):
@@ -111,7 +124,7 @@ def generate_base_document():
     '''
     generates a generic template for an MEI document for neume notation.
 
-    currently a bit of this is hardcoded and shouls probably be made more customizable.
+    currently a bit of this is hardcoded and should probably be made more customizable.
     '''
     meiDoc = MeiDocument("4.0.0")
 
@@ -180,8 +193,8 @@ def generate_base_document():
 
 def add_attributes_to_element(el, add):
     for key in add.keys():
-        if not add[key] or add[key] == 'None':
-            continue
+        # if not add[key] or add[key] == 'None':
+        #     continue
         el.addAttribute(key, str(add[key]))
     return el
 
@@ -461,7 +474,7 @@ if __name__ == '__main__':
     classifier_fname = 'csv-square notation test_20190725015554.csv'
     classifier = pct.fetch_table_from_csv(classifier_fname)
 
-    f_inds = range(0, 550)
+    f_inds = range(19, 20)
 
     for f_ind in f_inds:
 
@@ -490,7 +503,7 @@ if __name__ == '__main__':
 
         glyphs = add_flags_to_glyphs(glyphs)
         pairs = neume_to_lyric_alignment(glyphs, syl_boxes, median_line_spacing)
-        # draw_neume_alignment(in_png, out_fname_png, pairs)
+        draw_neume_alignment(in_png, out_fname_png, pairs)
         meiDoc = build_mei(pairs, staves, classifier)
         meiDoc = merge_nearby_neume_components(meiDoc)
 

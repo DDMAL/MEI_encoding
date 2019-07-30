@@ -6,10 +6,10 @@ from addSyllableText import add_syllables_to_doc
 import json
 
 
-class JSOMR2MEI(RodanTask):
-    name = 'JSOMR to MEI'
-    author = 'Noah Baxter, Tim de Reuse'
-    description = 'Generates an MEI file from a JSOMR file containing CC and pitch information'
+class MeiEncoding(RodanTask):
+    name = 'MeiEncoding'
+    author = 'Tim de Reuse'
+    description = 'Builds an MEI file from pitchfinding information and transcript alignment results.'
     enabled = True
     category = "Encoding"
     interactive = False
@@ -24,21 +24,21 @@ class JSOMR2MEI(RodanTask):
                 'type': 'string',
                 'default': '3.9.9',
                 'description': 'Specifies the MEI version, 3.9.9 is the old unofficial MEI standard used by Neon',
-            },
-            'Maximum Neume Spacing': {
-                'type': 'number',
-                'default': 0.3,
-                'minimum': 0.0,
-                'maximum': 100.0,
-                'description': 'The maximum spacing allowed between two neume shapes when grouping into syllables, 1.0 is the length of the average punctum',
-            },
-            'Neume Grouping Size': {
-                'type': 'integer',
-                'default': 8,
-                'minimum': 1,
-                'maximum': 99999,
-                'description': 'The maximum number of neume shapes that can be grouped into a syllable',
             }
+            # 'Maximum Neume Spacing': {
+            #     'type': 'number',
+            #     'default': 0.3,
+            #     'minimum': 0.0,
+            #     'maximum': 100.0,
+            #     'description': 'The maximum spacing allowed between two neume shapes when grouping into syllables, 1.0 is the length of the average punctum',
+            # },
+            # 'Neume Grouping Size': {
+            #     'type': 'integer',
+            #     'default': 8,
+            #     'minimum': 1,
+            #     'maximum': 99999,
+            #     'description': 'The maximum number of neume shapes that can be grouped into a syllable',
+            # }
         }
     }
 
