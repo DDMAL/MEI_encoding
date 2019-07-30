@@ -1,8 +1,7 @@
-# import rodan
-# from rodan.jobs import module_loader
-# import logging
+import rodan
+__version__ = "0.0.1"
+import logging
 
-__version__ = "0.1.0"
-# logger = logging.getLogger('rodan')
-# module_loader('rodan.jobs.JSOMR2MEI')
-from base import MeiEncoding
+logger = logging.getLogger("rodan")
+from rodan.jobs import module_loader
+module_loader("rodan.jobs.Mei-encoding")

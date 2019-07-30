@@ -7,8 +7,8 @@ from addSyllableText import add_syllables_to_doc
 import json
 
 
-class MeiEncoding(RodanTask):
-    name = 'MeiEncoding'
+class Mei-encoding(RodanTask):
+    name = 'Mei-encoding'
     author = 'Tim de Reuse'
     description = 'Builds an MEI file from pitchfinding information and transcript alignment results.'
     enabled = True
@@ -16,15 +16,15 @@ class MeiEncoding(RodanTask):
     interactive = False
 
     settings = {
-        'title': 'JSOMR to MEI Settings',
+        'title': 'Mei Encoding Settings',
         'type': 'object',
-        'required': ['MEI Version', 'Neume Component Spacing', 'Neume Grouping Size'],
+        'required': ['Maximum Neume Spacing'],
         'properties': {
             'Maximum Neume Spacing': {
                 'type': 'number',
                 'default': 1.0,
                 'minimum': 0.0,
-                'maximum': 100.0,
+                'maximum': 20.0,
                 'description': 'The spacing allowed between two neume components when grouping into neumes, where 1.0 is the width of the average punctum. At 0, neume components will not be merged together.',
             }
         }
