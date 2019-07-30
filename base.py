@@ -16,15 +16,15 @@ class MeiEncoding(RodanTask):
     interactive = False
 
     settings = {
-        'title': 'JSOMR to MEI Settings',
+        'title': 'Mei Encoding Settings',
         'type': 'object',
-        'required': ['MEI Version', 'Neume Component Spacing', 'Neume Grouping Size'],
+        'required': ['Maximum Neume Spacing'],
         'properties': {
             'Maximum Neume Spacing': {
                 'type': 'number',
                 'default': 1.0,
                 'minimum': 0.0,
-                'maximum': 100.0,
+                'maximum': 20.0,
                 'description': 'The spacing allowed between two neume components when grouping into neumes, where 1.0 is the width of the average punctum. At 0, neume components will not be merged together.',
             }
         }
