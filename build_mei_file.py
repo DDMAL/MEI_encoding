@@ -466,6 +466,22 @@ def merge_nearby_neume_components(meiDoc, width_multiplier=1):
     return meiDoc
 
 
+def process(jsomr, syls, classifier, width=1):
+    glyphs = jsomr['glyphs']
+    syl_boxes = syls['syl_boxes']
+    staves = jsomr['staves']
+    median_line_spacing = syls['median_line_spacing']
+
+    glyphs = add_flags_to_glyphs(glyphs)
+    pairs = neume_to_lyric_alignment(glyphs, syl_boxes, median_line_spacing)
+    meiDoc = build_mei(pairs, staves, classifier)
+
+    if spacing > 0:
+        meiDoc = merge_nearby_neume_components(meiDoc, width_multiplier=width)
+
+    return documentToText(mei_Doc)
+
+
 if __name__ == '__main__':
 
     import PIL

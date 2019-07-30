@@ -4,3 +4,6 @@
 - mimetype: application/mei+xml
   extension: mei
   description: Music Encoding Initiative
+- mimetype: text/csv
+  extension: csv
+  description: Comma Separated Values

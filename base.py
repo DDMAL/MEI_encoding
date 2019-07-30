@@ -1,7 +1,8 @@
 from rodan.jobs.base import RodanTask
 
 from gamera.core import Image
-from MeiOutput import MeiOutput
+import build_mei_file as bm
+import parse_classifier_table as pct
 from addSyllableText import add_syllables_to_doc
 import json
 
@@ -17,28 +18,15 @@ class MeiEncoding(RodanTask):
     settings = {
         'title': 'JSOMR to MEI Settings',
         'type': 'object',
-        'required': ['MEI Version', 'Maximum Neume Spacing', 'Neume Grouping Size'],
+        'required': ['MEI Version', 'Neume Component Spacing', 'Neume Grouping Size'],
         'properties': {
-            'MEI Version': {
-                'enum': ['4.0.0', '3.9.9'],
-                'type': 'string',
-                'default': '3.9.9',
-                'description': 'Specifies the MEI version, 3.9.9 is the old unofficial MEI standard used by Neon',
+            'Maximum Neume Spacing': {
+                'type': 'number',
+                'default': 1.0,
+                'minimum': 0.0,
+                'maximum': 100.0,
+                'description': 'The spacing allowed between two neume components when grouping into neumes, where 1.0 is the width of the average punctum. At 0, neume components will not be merged together.',
             }
-            # 'Maximum Neume Spacing': {
-            #     'type': 'number',
-            #     'default': 0.3,
-            #     'minimum': 0.0,
-            #     'maximum': 100.0,
-            #     'description': 'The maximum spacing allowed between two neume shapes when grouping into syllables, 1.0 is the length of the average punctum',
-            # },
-            # 'Neume Grouping Size': {
-            #     'type': 'integer',
-            #     'default': 8,
-            #     'minimum': 1,
-            #     'maximum': 99999,
-            #     'description': 'The maximum number of neume shapes that can be grouped into a syllable',
-            # }
         }
     }
 
@@ -51,6 +39,12 @@ class MeiEncoding(RodanTask):
     }, {
         'name': 'Text Alignment JSON',
         'resource_types': ['application/json'],
+        'minimum': 1,
+        'maximum': 1,
+        'is_list': False
+    }, {
+        'name': 'MEI Mapping CSV',
+        'resource_types': ['text/csv'],
         'minimum': 1,
         'maximum': 1,
         'is_list': False
@@ -73,20 +67,14 @@ class MeiEncoding(RodanTask):
         with open(inputs['Text Alignment JSON'][0]['resource_path'], 'r') as file:
             syls_json = json.loads(file.read())
 
-        kwargs = {
-            'mei_version': str(settings['MEI Version']),
-            'max_neume_spacing': settings['Maximum Neume Spacing'],
-            'max_group_size': settings['Neume Grouping Size'],
-        }
-        print('pass 1')
-        # parse JSOMR into an mei document
-        mei_obj = MeiOutput(jsomr, **kwargs)
-        mei_doc = mei_obj.run()
+        print('fetching classifier table')
+        classifier_table = pct.fetch_table_from_csv(inputs['Text Alignment JSON'][0]['resource_path'])
 
-        print('pass 2')
-        # add syllable information into mei document
-        mei_string = add_syllables_to_doc(mei_doc, syls_json, return_text=True)
+        print('processing doc')
+        spacing = settings['Neume Component Spacing']
+        meiDoc = bm.process(jsomr, syls, classifier_table, spacing)
 
+        print('writing doc')
         # write document to file
         outfile_path = outputs['MEI'][0]['resource_path']
         with open(outfile_path, 'w') as file:

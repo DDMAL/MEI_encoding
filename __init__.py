@@ -5,4 +5,4 @@
 __version__ = "0.1.0"
 # logger = logging.getLogger('rodan')
 # module_loader('rodan.jobs.JSOMR2MEI')
-from base import JSOMR2MEI
+from base import MeiEncoding
