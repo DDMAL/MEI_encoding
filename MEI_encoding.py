@@ -58,17 +58,17 @@ class MEI_encoding(RodanTask):
 
     def run_my_task(self, inputs, settings, outputs):
         jsomr_path = inputs['JSOMR'][0]['resource_path']
-        print('loading jsomr...'')
+        print('loading jsomr...')
         with open(jsomr_path, 'r') as file:
             jsomr = json.loads(file.read())
 
         try:
             alignment_path = inputs['Text Alignment JSON'][0]['resource_path']
         except KeyError:
-            print('no text alignment given! using dummy syllables...'')
+            print('no text alignment given! using dummy syllables...')
             syls = None
         else:
-            print('loading text alignment results...'')
+            print('loading text alignment results..')
             with open(alignment_path, 'r') as file:
                 syls = json.loads(file.read())
 

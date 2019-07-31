@@ -1,11 +1,11 @@
 import numpy as np
-from unidecode import unidecode
 import xml.etree.ElementTree as ET
 import csv
 
 
 def fetch_table_from_excel(classifier_fname):
     from xlrd import open_workbook
+    from unidecode import unidecode
 
     name_col = u'Encoding classifier'
     mei_col = u'Encoding MEI'

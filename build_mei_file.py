@@ -2,7 +2,6 @@ import xml.etree.ElementTree as ET
 import numpy as np
 import json
 import parse_classifier_table as pct
-import matplotlib.pyplot as plt
 from pymei import MeiDocument, MeiElement, MeiAttribute, documentToText, documentToFile
 from itertools import groupby
 
@@ -476,9 +475,9 @@ def merge_nearby_neume_components(meiDoc, width_multiplier=1):
 
 def process(jsomr, syls, classifier, width_mult=1, verbose=True):
     glyphs = jsomr['glyphs']
-    syl_boxes = syls['syl_boxes']
+    syl_boxes = syls['syl_boxes'] if syls is not None else None
+    median_line_spacing = syls['median_line_spacing'] if syls is not None else None
     staves = jsomr['staves']
-    median_line_spacing = syls['median_line_spacing']
 
     print('adding flags to glyphs...')
     glyphs = add_flags_to_glyphs(glyphs)
