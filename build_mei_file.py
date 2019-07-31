@@ -474,20 +474,24 @@ def merge_nearby_neume_components(meiDoc, width_multiplier=1):
     return meiDoc
 
 
-def process(jsomr, syls, classifier, width=1):
+def process(jsomr, syls, classifier, width_mult=1, verbose=True):
     glyphs = jsomr['glyphs']
     syl_boxes = syls['syl_boxes']
     staves = jsomr['staves']
     median_line_spacing = syls['median_line_spacing']
 
+    print('adding flags to glyphs...')
     glyphs = add_flags_to_glyphs(glyphs)
+    print('performing neume-to-lyric alignment...')
     pairs = neume_to_lyric_alignment(glyphs, syl_boxes, median_line_spacing)
+    print('building MEI...')
     meiDoc = build_mei(pairs, staves, classifier)
 
-    if spacing > 0:
-        meiDoc = merge_nearby_neume_components(meiDoc, width_multiplier=width)
+    print('neume component spacing > 0, merging nearby components...')
+    if width_mult > 0:
+        meiDoc = merge_nearby_neume_components(meiDoc, width_multiplier=width_mult)
 
-    return documentToText(mei_Doc)
+    return documentToText(meiDoc)
 
 
 if __name__ == '__main__':

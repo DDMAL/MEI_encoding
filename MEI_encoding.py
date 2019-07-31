@@ -1,9 +1,6 @@
 from rodan.jobs.base import RodanTask
-
-from gamera.core import Image
 import build_mei_file as bm
 import parse_classifier_table as pct
-from addSyllableText import add_syllables_to_doc
 import json
 
 
@@ -18,14 +15,14 @@ class MEI_encoding(RodanTask):
     settings = {
         'title': 'Mei Encoding Settings',
         'type': 'object',
-        'required': ['Maximum Neume Spacing'],
+        'required': ['Neume Component Spacing'],
         'properties': {
-            'Maximum Neume Spacing': {
+            'Neume Component Spacing': {
                 'type': 'number',
                 'default': 1.0,
                 'minimum': 0.0,
                 'maximum': 20.0,
-                'description': 'The spacing allowed between two neume components when grouping into neumes, where 1.0 is the width of the average punctum. At 0, neume components will not be merged together.',
+                'description': 'The spacing allowed between two neume components when grouping into neumes, where 1.0 is the width of the average glyph on the page. At 0, neume components will not be merged together.',
             }
         }
     }
@@ -60,26 +57,27 @@ class MEI_encoding(RodanTask):
     }]
 
     def run_my_task(self, inputs, settings, outputs):
-        print('loading jsomr')
-        with open(inputs['JSOMR'][0]['resource_path'], 'r') as file:
+        jsomr_path = inputs['JSOMR'][0]['resource_path']
+        print('loading jsomr...'')
+        with open(jsomr_path, 'r') as file:
             jsomr = json.loads(file.read())
 
-        print('loading json alignment')
         try:
-            with open(inputs['Text Alignment JSON'][0]['resource_path'], 'r') as file:
-                syls = json.loads(file.read())
-        except IOError:
+            alignment_path = inputs['Text Alignment JSON'][0]['resource_path']
+        except KeyError:
+            print('no text alignment given! using dummy syllables...'')
             syls = None
+        else:
+            print('loading text alignment results...'')
+            with open(alignment_path, 'r') as file:
+                syls = json.loads(file.read())
 
-        print('fetching classifier table')
-        classifier_table = pct.fetch_table_from_csv(inputs['Text Alignment JSON'][0]['resource_path'])
+        print('fetching classifier...')
+        classifier_table = pct.fetch_table_from_csv(inputs['MEI Mapping CSV'][0]['resource_path'])
+        spacing = list(settings.values())[0]
+        mei_string = bm.process(jsomr, syls, classifier_table, spacing)
 
-        print('processing doc')
-        spacing = settings['Neume Component Spacing']
-        meiDoc = bm.process(jsomr, syls, classifier_table, spacing)
-
-        print('writing doc')
-        # write document to file
+        print('writing to file...s')
         outfile_path = outputs['MEI'][0]['resource_path']
         with open(outfile_path, 'w') as file:
             file.write(mei_string)

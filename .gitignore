@@ -5,7 +5,6 @@ syl_json/
 *.jpg
 *.png
 *.DS_Store
-*.xlsx
 *.ttf
 *.csv
 
