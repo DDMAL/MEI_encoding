@@ -39,7 +39,7 @@ class Mei-encoding(RodanTask):
     }, {
         'name': 'Text Alignment JSON',
         'resource_types': ['application/json'],
-        'minimum': 1,
+        'minimum': 0,
         'maximum': 1,
         'is_list': False
     }, {
@@ -63,9 +63,13 @@ class Mei-encoding(RodanTask):
         print('loading jsomr')
         with open(inputs['JSOMR'][0]['resource_path'], 'r') as file:
             jsomr = json.loads(file.read())
+
         print('loading json alignment')
-        with open(inputs['Text Alignment JSON'][0]['resource_path'], 'r') as file:
-            syls_json = json.loads(file.read())
+        try:
+            with open(inputs['Text Alignment JSON'][0]['resource_path'], 'r') as file:
+                syls = json.loads(file.read())
+        except IOError:
+            syls = None
 
         print('fetching classifier table')
         classifier_table = pct.fetch_table_from_csv(inputs['Text Alignment JSON'][0]['resource_path'])

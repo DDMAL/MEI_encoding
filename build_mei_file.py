@@ -52,6 +52,14 @@ def neume_to_lyric_alignment(glyphs, syl_boxes, median_line_spacing):
     are strictly speaking not part of the MEI for the syllable; that is handled in the method that
     actually encodes the MEI.
     '''
+
+    dummy_syl = {u'syl': '', u'ul': [0, 0], u'lr': [0, 0]}
+
+    # if there's no syl information then make fake syllables for testing
+    if not syl_boxes:
+        pairs = [([g], dummy_syl) for g in glyphs]
+        return pairs
+
     glyphs_pos = 0
     num_glyphs = len(glyphs)
 
@@ -86,7 +94,7 @@ def neume_to_lyric_alignment(glyphs, syl_boxes, median_line_spacing):
     # dummy syl_box so they can be detected later
     if not starts[0] == 0:
         pairs.append(
-            (glyphs[:starts[0]], {u'syl': '', u'ul': [0, 0], u'lr': [0, 0]})
+            (glyphs[:starts[0]], dummy_syl)
         )
 
     starts.append(len(glyphs))
@@ -513,13 +521,13 @@ if __name__ == '__main__':
         print('building mei for {}...'.format(fname))
 
         glyphs = jsomr['glyphs']
-        syl_boxes = syls['syl_boxes']
+        syl_boxes = None  # syls['syl_boxes']
         staves = jsomr['staves']
         median_line_spacing = syls['median_line_spacing']
 
         glyphs = add_flags_to_glyphs(glyphs)
         pairs = neume_to_lyric_alignment(glyphs, syl_boxes, median_line_spacing)
-        draw_neume_alignment(in_png, out_fname_png, pairs)
+        # draw_neume_alignment(in_png, out_fname_png, pairs)
         meiDoc = build_mei(pairs, staves, classifier)
         meiDoc = merge_nearby_neume_components(meiDoc)
 
