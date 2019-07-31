@@ -7,8 +7,8 @@ from addSyllableText import add_syllables_to_doc
 import json
 
 
-class Mei-encoding(RodanTask):
-    name = 'Mei-encoding'
+class MEI_encoding(RodanTask):
+    name = 'MEI Encoding'
     author = 'Tim de Reuse'
     description = 'Builds an MEI file from pitchfinding information and transcript alignment results.'
     enabled = True
