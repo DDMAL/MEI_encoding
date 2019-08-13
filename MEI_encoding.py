@@ -19,7 +19,7 @@ class MEI_encoding(RodanTask):
         'properties': {
             'Neume Component Spacing': {
                 'type': 'number',
-                'default': 1.0,
+                'default': 2.0,
                 'minimum': 0.0,
                 'maximum': 20.0,
                 'description': 'The spacing allowed between two neume components when grouping into neumes, where 1.0 is the width of the average glyph on the page. At 0, neume components will not be merged together.',

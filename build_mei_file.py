@@ -495,8 +495,8 @@ def process(jsomr, syls, classifier, width_mult=1, verbose=True):
 
 if __name__ == '__main__':
 
-    import PIL
-    from PIL import Image, ImageDraw, ImageFont, ImageOps
+    # import PIL
+    # from PIL import Image, ImageDraw, ImageFont, ImageOps
 
     classifier_fname = 'csv-square notation test_20190725015554.csv'
     classifier = pct.fetch_table_from_csv(classifier_fname)
@@ -530,7 +530,7 @@ if __name__ == '__main__':
 
         glyphs = add_flags_to_glyphs(glyphs)
         pairs = neume_to_lyric_alignment(glyphs, syl_boxes, median_line_spacing)
-        # draw_neume_alignment(in_png, out_fname_png, pairs)
+        # %draw_neume_alignment(in_png, out_fname_png, pairs)
         meiDoc = build_mei(pairs, staves, classifier)
         meiDoc = merge_nearby_neume_components(meiDoc)
 
