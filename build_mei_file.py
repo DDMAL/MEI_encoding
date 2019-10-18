@@ -118,11 +118,19 @@ def draw_neume_alignment(in_png, out_fname, pairs, text_size=60):
             continue
 
         draw.rectangle(tb['ul'] + tb['lr'], outline='black')
-        draw.text(tb['ul'], tb['syl'], font=fnt, fill='gray')
+        # draw.text(tb['ul'], tb['syl'], font=fnt, fill='gray')
         for g in gs:
+
+            if 'clef' in g['name'] or 'custos' in g['name']:
+                continue
+
             bb = g['bounding_box']
             pt1 = (bb['ulx'] + bb['ncols'] // 2, bb['uly'] + bb['nrows'] // 2)
             pt2 = ((tb['ul'][0] + tb['lr'][0]) // 2, (tb['ul'][1] + tb['lr'][1]) // 2)
+
+            if pt1[1] > pt2[1]:
+                continue
+
             draw.line((pt1, pt2), fill='black', width=5)
     im.save(out_fname)
 
@@ -200,8 +208,8 @@ def generate_base_document():
 
 def add_attributes_to_element(el, add):
     for key in add.keys():
-        # if not add[key] or add[key] == 'None':
-        #     continue
+        if add[key] == 'None':
+            continue
         el.addAttribute(key, str(add[key]))
     return el
 
@@ -214,8 +222,11 @@ def create_primitive_element(xml, glyph, surface):
     res = MeiElement(xml.tag)
     attribs = xml.attrib
 
-    attribs['line'] = str(glyph['strt_pos'])
-    attribs['octave'] = str(glyph['octave'])
+    # ncs, custos do not have a @line attribute. this is a bit of a hack...
+    if xml.tag == 'clef':
+        attribs['line'] = str(glyph['strt_pos'])
+
+    attribs['oct'] = str(glyph['octave'])
     attribs['pname'] = str(glyph['note'])
     res = add_attributes_to_element(res, attribs)
 
@@ -265,7 +276,7 @@ def glyph_to_element(classifier, glyph, surface):
         cur_nc = parent.children[i]
         new_pname, new_octave = resolve_interval(prev_nc, cur_nc)
         cur_nc.addAttribute('pname', new_pname)
-        cur_nc.addAttribute('octave', new_octave)
+        cur_nc.addAttribute('oct', new_octave)
         cur_nc.removeAttribute('intm')
 
     return parent
@@ -292,7 +303,7 @@ def resolve_interval(prev_nc, cur_nc):
         interval = 0
 
     starting_pitch = prev_nc.getAttribute('pname').value
-    starting_octave = int(prev_nc.getAttribute('octave').value)
+    starting_octave = int(prev_nc.getAttribute('oct').value)
     end_octave = starting_octave
 
     try:
@@ -495,13 +506,13 @@ def process(jsomr, syls, classifier, width_mult=1, verbose=True):
 
 if __name__ == '__main__':
 
-    # import PIL
-    # from PIL import Image, ImageDraw, ImageFont, ImageOps
+    import PIL
+    from PIL import Image, ImageDraw, ImageFont, ImageOps
 
     classifier_fname = 'csv-square notation test_20190725015554.csv'
     classifier = pct.fetch_table_from_csv(classifier_fname)
 
-    f_inds = range(19, 20)
+    f_inds = range(0, 200)
 
     for f_ind in f_inds:
 
@@ -524,14 +535,14 @@ if __name__ == '__main__':
         print('building mei for {}...'.format(fname))
 
         glyphs = jsomr['glyphs']
-        syl_boxes = None  # syls['syl_boxes']
+        syl_boxes = syls['syl_boxes']
         staves = jsomr['staves']
         median_line_spacing = syls['median_line_spacing']
 
         glyphs = add_flags_to_glyphs(glyphs)
         pairs = neume_to_lyric_alignment(glyphs, syl_boxes, median_line_spacing)
-        # %draw_neume_alignment(in_png, out_fname_png, pairs)
+        # draw_neume_alignment(in_png, out_fname_png, pairs)
         meiDoc = build_mei(pairs, staves, classifier)
         meiDoc = merge_nearby_neume_components(meiDoc)
 
-    documentToFile(meiDoc, out_fname)
+        documentToFile(meiDoc, out_fname)
