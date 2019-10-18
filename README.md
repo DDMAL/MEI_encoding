@@ -1,8 +1,8 @@
-# JSOMR to MEI Wiki
+# MEI Encoding Rodan Job
 
-Automated conversion from [`JSOMR`](JSOMR) into [MEI](http://music-encoding.org/) as a job in the workflow builder [```Rodan```](https://github.com/DDMAL/Rodan)
+Encodes the output from [`JSOMR`](JSOMR) and [Text Alignment](https://github.com/DDMAL/text-alignment) into an [MEI](http://music-encoding.org/) file, as a job in the workflow builder [```Rodan```](https://github.com/DDMAL/Rodan).
 
-## Prereq
+<!-- ## Prereq
 
 JSOMR to MEI is deployed as a Rodan [Job Package](https://github.com/DDMAL/Rodan/wiki/Write-a-Rodan-job-package). Before installing, ensure that the latestest version of [`rodan-docker`](https://github.com/DDMAL/rodan-docker) has been cloned locally, built, and installed.
 
@@ -28,4 +28,4 @@ RODAN_JOB_PACKAGES = (
 
 ## Running Rodan
 - Follow the [rodan-docker guide](https://github.com/DDMAL/rodan-docker/blob/master/README.md) to have docker set up.
-- Once the above installation steps are complete, run ```docker-compose -f docker-compose.yml -f docker-compose.rodan-dev.yml up``` 
+- Once the above installation steps are complete, run ```docker-compose -f docker-compose.yml -f docker-compose.rodan-dev.yml up```  -->
