@@ -405,18 +405,17 @@ def build_mei(pairs, staves, classifier):
             zoneId = generate_zone(surface, bb)
             sb.addAttribute('facs', zoneId)
 
+            # case 4: the syllable is over, so the custos goes outside the syllable
+            if syllable_over:
+                layer.addChild(new_el)
+                layer.addChild(sb)
+                # do not include custos in line breaks! this was a typo in the MEI documentation
+            # elif 'custos' in glyph['name']:
+            #     sb.addChild(new_el)
+            #     cur_syllable.addChild(sb)
             # case 3
             # if there is no custos in this line break but syllable continues --
             # this does not often happen, probably just from errors in pitch-finding
-            if syllable_over:
-                sb.addAttribute('facs', zoneId)
-                layer.addChild(new_el)
-                layer.addChild(sb)
-                # if there is a custos to include in this line break
-            elif 'custos' in glyph['name']:
-                sb.addChild(new_el)
-                cur_syllable.addChild(sb)
-            # case 4: the syllable is over, so the custos goes outside the syllable
             else:
                 cur_syllable.addChild(new_el)
                 cur_syllable.addChild(sb)
@@ -512,7 +511,7 @@ if __name__ == '__main__':
     classifier_fname = 'csv-square notation test_20190725015554.csv'
     classifier = pct.fetch_table_from_csv(classifier_fname)
 
-    f_inds = range(0, 200)
+    f_inds = range(12, 16)
 
     for f_ind in f_inds:
 
