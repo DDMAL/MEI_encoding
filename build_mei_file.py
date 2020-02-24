@@ -361,12 +361,12 @@ def build_mei(pairs, staves, classifier):
             'lry': syl_box['lr'][1],
         }
         zoneId = generate_zone(surface, bb)
-        cur_syllable.addAttribute('facs', zoneId)
         layer.addChild(cur_syllable)
 
         # add syl element containing text on page
         syl = MeiElement('syl')
         syl.setValue(str(syl_box['syl']))
+        syl.addAttribute('facs', zoneId)
         cur_syllable.addChild(syl)
 
         # iterate over glyphs on the page that fall within the bounds of this syllable
