@@ -349,6 +349,18 @@ def build_mei(pairs, staves, classifier):
     '''
     meiDoc, surface, layer = generate_base_document()
 
+    # add an initial system beginning
+    sb = MeiElement('sb')
+    bb = staves[0]['bounding_box']
+    bb = {
+        'ulx': bb['ulx'],
+        'uly': bb['uly'],
+        'lrx': bb['ulx'] + bb['ncols'],
+        'lry': bb['uly'] + bb['nrows'],
+    }
+    zoneId = generate_zone(surface, bb)
+    sb.addAttribute('facs', zoneId)
+
     # add to the MEI document, syllable by syllable
     for gs, syl_box in pairs:
 
@@ -393,7 +405,7 @@ def build_mei(pairs, staves, classifier):
                 continue
 
             sb = MeiElement('sb')
-            cur_staff = int(glyph['staff']) - 1
+            cur_staff = int(glyph['staff'])
 
             bb = staves[cur_staff]['bounding_box']
             bb = {
