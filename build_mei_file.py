@@ -361,7 +361,7 @@ def build_mei(pairs, staves, classifier):
             'lry': syl_box['lr'][1],
         }
         zoneId = generate_zone(surface, bb)
-        cur_syllable.addAttribute('facs', zoneId)
+        cur_syllable.addAttribute('facs', '#' + zoneId)
         layer.addChild(cur_syllable)
 
         # add syl element containing text on page
@@ -403,7 +403,7 @@ def build_mei(pairs, staves, classifier):
                 'lry': bb['uly'] + bb['nrows'],
             }
             zoneId = generate_zone(surface, bb)
-            sb.addAttribute('facs', zoneId)
+            sb.addAttribute('facs', '#' + zoneId)
 
             # case 4: the syllable is over, so the custos goes outside the syllable
             if syllable_over:
@@ -448,8 +448,8 @@ def merge_nearby_neume_components(meiDoc, width_multiplier=1):
 
         left_nc = nl.children[-1]
         right_nc = nr.children[0]
-        left_zone = surf_dict[left_nc.getAttribute('facs').value]
-        right_zone = surf_dict[left_nc.getAttribute('facs').value]
+        left_zone = surf_dict[left_nc.getAttribute('facs').value[1:]]
+        right_zone = surf_dict[left_nc.getAttribute('facs').value[1:]]
         distance = int(left_zone.getAttribute('lrx').value) - int(right_zone.getAttribute('ulx').value)
         return (distance - med_neume_width) <= 0
 
