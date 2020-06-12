@@ -424,12 +424,14 @@ def merge_nearby_neume_components(meiDoc, width_multiplier=1):
     all_syllables = meiDoc.getElementsByName('syllable')
     surface = meiDoc.getElementsByName('surface')[0]
 
-    # build a dictionary linking each zone's ID to its element object for easy access
     surf_dict = {}
     neume_widths = []
     for c in surface.getChildren():
-        neume_widths.append(int(c.getAttribute('lrx').value) - int(c.getAttribute('ulx').value))
-        surf_dict[c.id] = c
+        surf_dict[c.id] = {}
+        for coord in c.attributes:
+            surf_dict[c.id][coord.name] = int(coord.value)
+
+    neume_widths = [x['lrx'] - x['ulx'] for x in surf_dict.values()]
     med_neume_width = np.median(neume_widths) * width_multiplier
 
     # returns True if both inputs are of type 'neume' and they are close enough to be merged
@@ -437,12 +439,13 @@ def merge_nearby_neume_components(meiDoc, width_multiplier=1):
         if not (nl.name == 'neume' and nr.name == 'neume'):
             return False
 
-        left_nc = nl.children[-1]
-        right_nc = nr.children[0]
-        left_zone = surf_dict[left_nc.getAttribute('facs').value]
-        right_zone = surf_dict[left_nc.getAttribute('facs').value]
-        distance = int(left_zone.getAttribute('lrx').value) - int(right_zone.getAttribute('ulx').value)
-        return (distance - med_neume_width) <= 0
+        nl_right_bound = max([surf_dict[n.getAttribute('facs').value]['lrx'] for n in nl.children])
+        nr_left_bound = min([surf_dict[n.getAttribute('facs').value]['ulx'] for n in nr.children])
+
+        distance = nr_left_bound - nl_right_bound
+        # print(nl_right_bound, nr_left_bound, distance, (distance - med_neume_width))
+
+        return (distance <= med_neume_width)
 
     for syllable in all_syllables:
         children = syllable.getChildren()
@@ -532,7 +535,7 @@ if __name__ == '__main__':
         glyphs = add_flags_to_glyphs(glyphs)
         pairs = neume_to_lyric_alignment(glyphs, syl_boxes, median_line_spacing)
         meiDoc = build_mei(pairs, staves, classifier, jsomr['page'])
-        meiDoc = merge_nearby_neume_components(meiDoc)
+        meiDoc = merge_nearby_neume_components(meiDoc, width_multiplier=2)
 
         draw_mei_doc(in_png, out_fname_png, meiDoc)
 
