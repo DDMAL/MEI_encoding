@@ -315,11 +315,34 @@ def generate_zone(surface, bb):
     return el.getId()
 
 
-def build_mei(pairs, staves, classifier):
+def build_mei(pairs, staves, classifier, page):
     '''
     builds the actual MEI document using the resulting pairs from the neume_to_lyric_alignment.
     '''
     meiDoc, surface, layer = generate_base_document()
+    surface_bb = {
+        'ulx': page['bounding_box']['ulx'],
+        'uly': page['bounding_box']['uly'],
+        'lrx': page['bounding_box']['ulx'] + page['bounding_box']['ncols'],
+        'lry': page['bounding_box']['uly'] + page['bounding_box']['nrows']
+    }
+    surface.addAttribute('ulx', str(surface_bb['ulx']))
+    surface.addAttribute('uly', str(surface_bb['uly']))
+    surface.addAttribute('lrx', str(surface_bb['lrx']))
+    surface.addAttribute('lry', str(surface_bb['lry']))
+
+    # add an initial system beginning
+    sb = MeiElement('sb')
+    bb = staves[0]['bounding_box']
+    bb = {
+        'ulx': bb['ulx'],
+        'uly': bb['uly'],
+        'lrx': bb['ulx'] + bb['ncols'],
+        'lry': bb['uly'] + bb['nrows'],
+    }
+    zoneId = generate_zone(surface, bb)
+    sb.addAttribute('facs', zoneId)
+    layer.addChild(sb)
 
     # add to the MEI document, syllable by syllable
     for gs, syl_box in pairs:
@@ -333,12 +356,12 @@ def build_mei(pairs, staves, classifier):
             'lry': syl_box['lr'][1],
         }
         zoneId = generate_zone(surface, bb)
-        cur_syllable.addAttribute('facs', zoneId)
         layer.addChild(cur_syllable)
 
         # add syl element containing text on page
         syl = MeiElement('syl')
         syl.setValue(str(syl_box['syl']))
+        syl.addAttribute('facs', zoneId)
         cur_syllable.addChild(syl)
 
         # iterate over glyphs on the page that fall within the bounds of this syllable
@@ -365,7 +388,7 @@ def build_mei(pairs, staves, classifier):
                 continue
 
             sb = MeiElement('sb')
-            cur_staff = int(glyph['staff']) - 1
+            cur_staff = int(glyph['staff'])
 
             bb = staves[cur_staff]['bounding_box']
             bb = {
@@ -461,7 +484,7 @@ def process(jsomr, syls, classifier, width_mult=1, verbose=True):
     print('performing neume-to-lyric alignment...')
     pairs = neume_to_lyric_alignment(glyphs, syl_boxes, median_line_spacing)
     print('building MEI...')
-    meiDoc = build_mei(pairs, staves, classifier)
+    meiDoc = build_mei(pairs, staves, classifier, jsomr['page'])
 
     print('neume component spacing > 0, merging nearby components...')
     if width_mult > 0:
@@ -587,8 +610,13 @@ if __name__ == '__main__':
         glyphs = add_flags_to_glyphs(glyphs)
         pairs = neume_to_lyric_alignment(glyphs, syl_boxes, median_line_spacing)
         # draw_neume_alignment(in_png, out_fname_png, pairs)
+<<<<<<< HEAD
         meiDoc = build_mei(pairs, staves, classifier)
         meiDoc = merge_nearby_neume_components(meiDoc, width_multiplier=1)
         draw_mei_doc(in_png, out_fname_png, meiDoc)
+=======
+        meiDoc = build_mei(pairs, staves, classifier, jsomr['page'])
+        meiDoc = merge_nearby_neume_components(meiDoc)
+>>>>>>> 2ec9ac8c8f55403f003f921d7e7335e1aba1b18b
 
         documentToFile(meiDoc, out_fname)
