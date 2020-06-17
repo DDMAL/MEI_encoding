@@ -22,10 +22,10 @@ class MEI_encoding(RodanTask):
         'properties': {
             'Neume Component Spacing': {
                 'type': 'number',
-                'default': 2.0,
+                'default': 0.5,
                 'minimum': 0.0,
                 'maximum': 10.0,
-                'description': 'A multiplier controlling the spacing allowed between two neume components when grouping into neumes. 1.0 is the median width of all glyphs on the page, 2.0 is twice the median width, and so on. At 0, neume components will not be merged together, and eacn one will be treated as its own neume.',
+                'description': 'A multiplier controlling the spacing allowed between two neume components when grouping into neumes. 1.0 will use the median width of all glyphs on the page, 2.0 will use twice the median width, and so on. At 0, neume components will not be merged together, and eacn one will be treated as its own neume.',
             }
         }
     }

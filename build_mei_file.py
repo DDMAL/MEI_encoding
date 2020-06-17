@@ -444,7 +444,7 @@ def merge_nearby_neume_components(meiDoc, width_mult):
         nr_left_bound = min([surf_dict[n.getAttribute('facs').value]['ulx'] for n in nr.children])
 
         distance = nr_left_bound - nl_right_bound
-        # print(nl_right_bound, nr_left_bound, distance, (distance - med_neume_width))
+        # print(nl_right_bound, nr_left_bound, distance, (distance <= med_neume_width))
 
         return (distance <= med_neume_width)
 
@@ -456,6 +456,9 @@ def merge_nearby_neume_components(meiDoc, width_mult):
 
         # holds the first neume in a sequence of neumes that will be merged
         target = None
+
+        # holds children once in the accumulator that must be removed after iteration is done
+        children_to_remove = []
 
         # iterate over all children. for each neume decide whether or not it should be merged
         # with the next one using compare_neumes. if yes, add the next one to the accumulator.
@@ -471,10 +474,15 @@ def merge_nearby_neume_components(meiDoc, width_mult):
                     ncs_to_merge += neume.children
                 for nc in ncs_to_merge:             # merge all neume components
                     target.addChild(nc)
-                for neume in accumulator:           # clean up neumes that were merged
-                    syllable.removeChild(neume)
+                children_to_remove += accumulator
+                # for neume in accumulator:           # clean up neumes that were merged
+                #     syllable.removeChild(neume)
                 target = None
                 accumulator = []
+
+        for neume in children_to_remove:
+            syllable.removeChild(neume)
+
     return meiDoc
 
 
@@ -506,7 +514,7 @@ if __name__ == '__main__':
     classifier_fname = 'csv-square notation test_20190725015554.csv'
     classifier = pct.fetch_table_from_csv(classifier_fname)
 
-    f_inds = range(320, 330)
+    f_inds = range(322, 325)
 
     for f_ind in f_inds:
 
@@ -536,7 +544,7 @@ if __name__ == '__main__':
         glyphs = add_flags_to_glyphs(glyphs)
         pairs = neume_to_lyric_alignment(glyphs, syl_boxes, median_line_spacing)
         meiDoc = build_mei(pairs, staves, classifier, jsomr['page'])
-        meiDoc = merge_nearby_neume_components(meiDoc, width_mult=2)
+        meiDoc = merge_nearby_neume_components(meiDoc, width_mult=0.25)
 
         draw_mei_doc(in_png, out_fname_png, meiDoc)
 
