@@ -414,7 +414,7 @@ def build_mei(pairs, staves, classifier, page):
     return meiDoc
 
 
-def merge_nearby_neume_components(meiDoc, width_multiplier=1):
+def merge_nearby_neume_components(meiDoc, width_mult):
     '''
     a heuristic to merge together neume components that are 1) consecutive 2) within the same
     syllable 3) within a certain distance from each other. this distance is by default set to the
@@ -432,7 +432,7 @@ def merge_nearby_neume_components(meiDoc, width_multiplier=1):
             surf_dict[c.id][coord.name] = int(coord.value)
 
     neume_widths = [x['lrx'] - x['ulx'] for x in surf_dict.values()]
-    med_neume_width = np.median(neume_widths) * width_multiplier
+    med_neume_width = np.median(neume_widths) * width_mult
 
     # returns True if both inputs are of type 'neume' and they are close enough to be merged
     def compare_neumes(nl, nr):
@@ -477,7 +477,7 @@ def merge_nearby_neume_components(meiDoc, width_multiplier=1):
     return meiDoc
 
 
-def process(jsomr, syls, classifier, width_mult=1, verbose=True):
+def process(jsomr, syls, classifier, width_mult, verbose=True):
     glyphs = jsomr['glyphs']
     syl_boxes = syls['syl_boxes'] if syls is not None else None
     median_line_spacing = syls['median_line_spacing'] if syls is not None else None
@@ -535,7 +535,7 @@ if __name__ == '__main__':
         glyphs = add_flags_to_glyphs(glyphs)
         pairs = neume_to_lyric_alignment(glyphs, syl_boxes, median_line_spacing)
         meiDoc = build_mei(pairs, staves, classifier, jsomr['page'])
-        meiDoc = merge_nearby_neume_components(meiDoc, width_multiplier=2)
+        meiDoc = merge_nearby_neume_components(meiDoc, width_mult=2)
 
         draw_mei_doc(in_png, out_fname_png, meiDoc)
 
