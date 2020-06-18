@@ -5,7 +5,7 @@ import parse_classifier_table as pct
 from pymei import MeiDocument, MeiElement, MeiAttribute, documentToText, documentToFile
 from itertools import groupby
 from visualize_alignment import draw_mei_doc
-from MEI_encoding import __version__
+from rodan.jobs.MEI_encoding import __version__
 
 
 def add_flags_to_glyphs(glyphs):
