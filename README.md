@@ -1,31 +1,7 @@
 # MEI Encoding Rodan Job
 
-Encodes the output from [`JSOMR`](JSOMR) and [Text Alignment](https://github.com/DDMAL/text-alignment) into an [MEI](http://music-encoding.org/) file, as a job in the workflow builder [```Rodan```](https://github.com/DDMAL/Rodan).
+Encodes the output from [`Pitch Finding`](https://github.com/DDMAL/heuristic-pitch-finding) into an [MEI](http://music-encoding.org/) file, as a job in the workflow builder [```Rodan```](https://github.com/DDMAL/Rodan). Requires a matching MEI mapping CSV that associates glyphs with snippets of MEI, created with the [`MEI Mapping Tool`](https://github.com/DDMAL/mei-mapping-tool).
 
-<!-- ## Prereq
+Can take additional JSON input from [Text Alignment](https://github.com/DDMAL/text-alignment), so that textual information will be included in the MEI and the neumes will be correctly partitioned into syllables. If this input is not present the output will still be valid MEI, just with "blank" syllables.
 
-JSOMR to MEI is deployed as a Rodan [Job Package](https://github.com/DDMAL/Rodan/wiki/Write-a-Rodan-job-package). Before installing, ensure that the latestest version of [`rodan-docker`](https://github.com/DDMAL/rodan-docker) has been cloned locally, built, and installed.
-
-## Installing into rodan-docker
-1. Clone this directory into `/path/to/rodan_docker/jobs/JSOMR2MEI`
-2. In `/path/to/rodan_docker/docker-compose.job-dev.yml`, add the reference to volumes like so:
-``` python
-    volumes:
-     - ./jobs/settings.py:/code/rodan/rodan/settings.py
-     - ./jobs/JSOMR2MEI/:/code/rodan/rodan/jobs/JSOMR2MEI
-```
-3. If one does not already exist, create a python file called `settings.py` in the rodan jobs folder like so: `/path/to/rodan_docker/jobs/settings.py`
-4. Copy and paste the contents of `settings.py.job_development` into `settings.py`
-5. Add this package path to the Rodan Job Package registration in the `settings.py` file. This should look something like the following
-``` python
-RODAN_JOB_PACKAGES = (
-  "rodan.jobs.job1",
-  "rodan.jobs.job2",
-  ...,
-  "rodan.jobs.JSOMR2MEI",
-)
-```
-
-## Running Rodan
-- Follow the [rodan-docker guide](https://github.com/DDMAL/rodan-docker/blob/master/README.md) to have docker set up.
-- Once the above installation steps are complete, run ```docker-compose -f docker-compose.yml -f docker-compose.rodan-dev.yml up```  -->
+**Currently uses Python 2; Next major version will update to Python 3** (at least, that's the plan). Requires numpy>=1.16.0 and libMEI>=3.1.0. Scripts requiring PIL>=6.1.0 are in ```visualize_alignment.py``` for local development.

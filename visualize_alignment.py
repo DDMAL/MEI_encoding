@@ -3,10 +3,13 @@ import PIL
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 import numpy as np
 
+# This file contains only functions for drawing out intermediate results of the alignment, for
+# use when developing; nothing here is called in the rodan job.
+
 
 def draw_neume_alignment(in_png, out_fname, pairs, text_size=60):
     '''
-    given the pairs from neume_to_lyric_alignment, draws the result on the original page (given a
+    Given the pairs from neume_to_lyric_alignment, draws the result on the original page (given a
     path to the .png)
     '''
     fnt = ImageFont.truetype('FreeMono.ttf', text_size)
@@ -38,7 +41,7 @@ def draw_neume_alignment(in_png, out_fname, pairs, text_size=60):
 
 def draw_mei_doc(in_png, out_fname, meiDoc, text_size=60):
     '''
-    given an encoded mei_doc result, draws the result on the original page (given a
+    Given an encoded mei_doc result, draws the result on the original page (given a
     path to the .png)
     '''
 

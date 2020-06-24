@@ -4,6 +4,12 @@ import csv
 
 
 def fetch_table_from_excel(classifier_fname):
+    '''
+    (deprecated)
+
+    Given a path to an excel spreadsheet, returns a dictionary linking classification names to
+    MEI snippets, given that it contains a table with columns labeled "mei" and "classification."
+    '''
     from xlrd import open_workbook
     from unidecode import unidecode
 
@@ -37,6 +43,12 @@ def fetch_table_from_excel(classifier_fname):
 
 
 def fetch_table_from_csv(fname):
+    '''
+    Given a path to a .csv file that was output from the MEI mapping tool,
+    (github.com/DDMAL/mei-mapping-tool)
+    outputs a dictionary linking classifications of glyphs (e.g., podatus2, punctum, ligature3)
+    to ElementTree objects of MEI snippets.
+    '''
     with open(fname, 'r') as f:
         table_reader = csv.reader(f)
         full_table = []
