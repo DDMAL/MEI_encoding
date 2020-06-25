@@ -62,7 +62,7 @@ def draw_mei_doc(in_png, out_fname, meiDoc, text_size=60):
         neumes = syllable.getChildrenByName('neume')
 
         for n in neumes:
-            nc_ids = [x.getAttribute('facs').value for x in n.children]
+            nc_ids = [x.getAttribute('facs').value[1:] for x in n.children]
             zones = [surf_dict[x] for x in nc_ids]
             ulx = min([z['ulx'] for z in zones])
             uly = min([z['uly'] for z in zones])
@@ -74,7 +74,7 @@ def draw_mei_doc(in_png, out_fname, meiDoc, text_size=60):
             neume_avg_y = (uly + lry) // 2
 
             syl = syllable.getChildrenByName('syl')[0]
-            syl_zone = surf_dict[syl.getAttribute('facs').value]
+            syl_zone = surf_dict[syl.getAttribute('facs').value[1:]]
             syl_avg_x = (syl_zone['ulx'] + syl_zone['lrx']) // 2
             syl_avg_y = (syl_zone['uly'] + syl_zone['lry']) // 2
 

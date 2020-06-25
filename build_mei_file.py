@@ -210,7 +210,7 @@ def create_primitive_element(xml, glyph, surface):
     res = add_attributes_to_element(res, attribs)
 
     zoneId = generate_zone(surface, glyph['bounding_box'])
-    res.addAttribute('facs', zoneId)
+    res.addAttribute('facs', '#' + zoneId)
     return res
 
 
@@ -561,6 +561,6 @@ if __name__ == '__main__':
         print('neume component spacing > 0, merging nearby components...')
         meiDoc = merge_nearby_neume_components(meiDoc, width_mult=0.25)
 
-        # draw_mei_doc(in_png, out_fname_png, meiDoc)
+        draw_mei_doc(in_png, out_fname_png, meiDoc)
 
         documentToFile(meiDoc, out_fname)
