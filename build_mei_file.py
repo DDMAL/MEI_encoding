@@ -356,7 +356,7 @@ def build_mei(pairs, classifier, staves, page):
         'lry': bb['uly'] + bb['nrows'],
     }
     zoneId = generate_zone(surface, bb)
-    sb.addAttribute('facs', zoneId)
+    sb.addAttribute('facs', '#' + zoneId)
     layer.addChild(sb)
 
     # add to the MEI document, syllable by syllable
@@ -376,7 +376,7 @@ def build_mei(pairs, classifier, staves, page):
         # add syl element containing text on page
         syl = MeiElement('syl')
         syl.setValue(str(syl_box['syl']))
-        syl.addAttribute('facs', zoneId)
+        syl.addAttribute('facs', '#' + zoneId)
         cur_syllable.addChild(syl)
 
         # iterate over glyphs on the page that fall within the bounds of this syllable
@@ -413,7 +413,7 @@ def build_mei(pairs, classifier, staves, page):
                 'lry': bb['uly'] + bb['nrows'],
             }
             zoneId = generate_zone(surface, bb)
-            sb.addAttribute('facs', zoneId)
+            sb.addAttribute('facs', '#' + zoneId)
 
             # case 3: the syllable is over, so the custos goes outside the syllable
             # do not include custos in <sb> tags! this was a typo in the MEI documentation
@@ -452,9 +452,9 @@ def merge_nearby_neume_components(meiDoc, width_mult):
     def compare_neumes(nl, nr):
         if not (nl.name == 'neume' and nr.name == 'neume'):
             return False
-
-        nl_right_bound = max([surf_dict[n.getAttribute('facs').value]['lrx'] for n in nl.children])
-        nr_left_bound = min([surf_dict[n.getAttribute('facs').value]['ulx'] for n in nr.children])
+          
+        nl_right_bound = max([surf_dict[n.getAttribute('facs').value[1:]]['lrx'] for n in nl.children])
+        nr_left_bound = min([surf_dict[n.getAttribute('facs').value[1:]]['ulx'] for n in nr.children])
 
         distance = nr_left_bound - nl_right_bound
         # print(nl_right_bound, nr_left_bound, distance, (distance <= med_neume_width))
