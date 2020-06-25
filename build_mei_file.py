@@ -4,15 +4,17 @@ import json
 import parse_classifier_table as pct
 from pymei import MeiDocument, MeiElement, MeiAttribute, documentToText, documentToFile
 from itertools import groupby
+from visualize_alignment import draw_mei_doc
+# from rodan.jobs.MEI_encoding import __version__
 
 
 def add_flags_to_glyphs(glyphs):
     '''
-    rearrange / add some information to the glyphs read in from pitch-finding before processing.
-    necessary to tell when line breaks are.
+    Given the raw list of glyphs from pitch-finding containing position and classification
+    information, add some information to the data structure. This lets us tell more easily where
+    line breaks are in the file without having to re-perform calculations.
     '''
 
-    # MAKE SURE THAT SYL_BOXES IS SORTED IN READING ORDER! (include more info in json)
     for g in glyphs:
         for key in g['glyph'].keys():
             g[key] = g['glyph'][key]
@@ -43,20 +45,25 @@ def add_flags_to_glyphs(glyphs):
 
 def neume_to_lyric_alignment(glyphs, syl_boxes, median_line_spacing):
     '''
-    given the processed glyphs from add_flags_to_glyphs and the information from the text alignment
+    Given the processed glyphs from add_flags_to_glyphs and the information from the text alignment
     job (syl_boxes, median_line_spacing), finds out which syllables of text correspond to which
     glyphs on the page and returns a list of ([neumes], syllable) pairs.
 
-    things like custos, clefs, and accidentals are included inside these lists even though they
-    are strictly speaking not part of the MEI for the syllable; that is handled in the method that
+    Things like custos, clefs, and accidentals are included inside these lists even though they
+    are, strictly speaking, not part of the MEI for the syllable; that is handled in the method that
     actually encodes the MEI.
     '''
 
     dummy_syl = {u'syl': '', u'ul': [0, 0], u'lr': [0, 0]}
 
-    # if there's no syl information then make fake syllables for testing
+    # if there's no syl information then make fake syllables for testing. this method makes one
+    # large syllable covering an entire staff line.
     if not syl_boxes:
-        pairs = [([g], dummy_syl) for g in glyphs]
+        glyphs = sorted(glyphs, key=lambda x: int(x['staff']))
+
+        grouped_glyphs = [list(g) for k, g in groupby(glyphs, key=lambda x: int(x['staff']))]
+
+        pairs = [(g, dummy_syl) for g in grouped_glyphs]
         return pairs
 
     glyphs_pos = 0
@@ -103,43 +110,11 @@ def neume_to_lyric_alignment(glyphs, syl_boxes, median_line_spacing):
     return pairs
 
 
-def draw_neume_alignment(in_png, out_fname, pairs, text_size=60):
-    '''
-    given the pairs from neume_to_lyric_alignment, draws the result on the original page (given a
-    path to the .png)
-    '''
-    fnt = ImageFont.truetype('FreeMono.ttf', text_size)
-    im = Image.open(in_png).convert('RGB')
-    draw = ImageDraw.Draw(im)
-
-    last_text = None
-    for gs, tb in pairs:
-        if not tb:
-            continue
-
-        draw.rectangle(tb['ul'] + tb['lr'], outline='black')
-        # draw.text(tb['ul'], tb['syl'], font=fnt, fill='gray')
-        for g in gs:
-
-            if 'clef' in g['name'] or 'custos' in g['name']:
-                continue
-
-            bb = g['bounding_box']
-            pt1 = (bb['ulx'] + bb['ncols'] // 2, bb['uly'] + bb['nrows'] // 2)
-            pt2 = ((tb['ul'][0] + tb['lr'][0]) // 2, (tb['ul'][1] + tb['lr'][1]) // 2)
-
-            if pt1[1] > pt2[1]:
-                continue
-
-            draw.line((pt1, pt2), fill='black', width=5)
-    im.save(out_fname)
-
-
 def generate_base_document():
     '''
-    generates a generic template for an MEI document for neume notation.
+    Generates a generic template for an MEI document for neume notation.
 
-    currently a bit of this is hardcoded and should probably be made more customizable.
+    Currently a bit of this is hardcoded and should probably be made more customizable.
     '''
     meiDoc = MeiDocument("4.0.0")
 
@@ -156,7 +131,7 @@ def generate_base_document():
     fileDesc.addChild(titleSt)
     title = MeiElement('title')
     titleSt.addChild(title)
-    title.setValue('MEI Encoding Output')
+    # title.setValue('MEI Encoding Output (%s)' % __version__)
     pubStmt = MeiElement('pubStmt')
     fileDesc.addChild(pubStmt)
 
@@ -207,6 +182,10 @@ def generate_base_document():
 
 
 def add_attributes_to_element(el, add):
+    '''
+    A helper function that takes in a dictionary linking attributes --> values, and adds all these
+    attributes to the libMEI object @add.
+    '''
     for key in add.keys():
         if add[key] == 'None':
             continue
@@ -216,8 +195,8 @@ def add_attributes_to_element(el, add):
 
 def create_primitive_element(xml, glyph, surface):
     '''
-    creates a "lowest-level" element out of the xml retrieved from the MEI mapping tool and
-    registers its bounding box in the given surface.
+    Creates a "lowest-level" element out of the xml retrieved from the MEI mapping tool (passed as
+    an ElementTree object in @xml) and registers its bounding box in the given surface.
     '''
     res = MeiElement(xml.tag)
     attribs = xml.attrib
@@ -237,10 +216,10 @@ def create_primitive_element(xml, glyph, surface):
 
 def glyph_to_element(classifier, glyph, surface):
     '''
-    translates a glyph as output by the pitchfinder into an MEI element, registering bounding boxes
+    Translates a glyph as output by the pitchfinder into an MEI element, registering bounding boxes
     in the given surface.
 
-    currently the assumption is that no MEI information in the given classifier is more than one
+    Currently the assumption is that no MEI information in the given classifier is more than one
     level deep - that is, everything is either a single element (clef, custos) or the child of a
     single element (neumes).
     '''
@@ -284,11 +263,12 @@ def glyph_to_element(classifier, glyph, surface):
 
 def resolve_interval(prev_nc, cur_nc):
     '''
-    when given a ligature or something like that which specifies only the starting pitch and an
-    interval, we need to calculate what the pitch of the rest of the notes are going to be. given
+    When given a ligature or something like that which specifies only the starting pitch and an
+    interval, we need to calculate what the pitch of the rest of the notes are going to be. Given
     two neume components, where the second one has an 'intm' attribute, this calculates what the
-    correct scale degree and octave is. N.B. in MEI octave numbers increase when going from a B to
-    a C.
+    correct scale degree and octave is.
+
+    N.B. in MEI octave numbers increase when going from a B to a C.
     '''
 
     scale = ['c', 'd', 'e', 'f', 'g', 'a', 'b']
@@ -327,11 +307,13 @@ def resolve_interval(prev_nc, cur_nc):
 
 def generate_zone(surface, bb):
     '''
-    generates a zone element, adds it to the given surface, and returns its ID.
+    Given a bounding box, generates a zone element, adds it to the given @surface,
+    and returns its ID.
     '''
     el = MeiElement('zone')
     surface.addChild(el)
 
+    # could be cleaner, but necessary so that we don't add extra attributes from @bb
     attribs = {
         'ulx': bb['ulx'],
         'uly': bb['uly'],
@@ -343,11 +325,39 @@ def generate_zone(surface, bb):
     return el.getId()
 
 
-def build_mei(pairs, staves, classifier):
+def build_mei(pairs, classifier, staves, page):
     '''
-    builds the actual MEI document using the resulting pairs from the neume_to_lyric_alignment.
+    Encodes the final MEI document using:
+        @pairs: Pairs from the neume_to_lyric_alignment.
+        @classifier: The MEI mapping dictionary output
+            by fetch_table_from_csv() in parse_classifier_table.py
+        @staves: Bounding box information from pitch finding JSON.
+        @page: Page dimension information from pitch finding JSON.
     '''
     meiDoc, surface, layer = generate_base_document()
+    surface_bb = {
+        'ulx': page['bounding_box']['ulx'],
+        'uly': page['bounding_box']['uly'],
+        'lrx': page['bounding_box']['ulx'] + page['bounding_box']['ncols'],
+        'lry': page['bounding_box']['uly'] + page['bounding_box']['nrows']
+    }
+    surface.addAttribute('ulx', str(surface_bb['ulx']))
+    surface.addAttribute('uly', str(surface_bb['uly']))
+    surface.addAttribute('lrx', str(surface_bb['lrx']))
+    surface.addAttribute('lry', str(surface_bb['lry']))
+
+    # add an initial system beginning
+    sb = MeiElement('sb')
+    bb = staves[0]['bounding_box']
+    bb = {
+        'ulx': bb['ulx'],
+        'uly': bb['uly'],
+        'lrx': bb['ulx'] + bb['ncols'],
+        'lry': bb['uly'] + bb['nrows'],
+    }
+    zoneId = generate_zone(surface, bb)
+    sb.addAttribute('facs', '#' + zoneId)
+    layer.addChild(sb)
 
     # add to the MEI document, syllable by syllable
     for gs, syl_box in pairs:
@@ -361,12 +371,12 @@ def build_mei(pairs, staves, classifier):
             'lry': syl_box['lr'][1],
         }
         zoneId = generate_zone(surface, bb)
-        cur_syllable.addAttribute('facs', '#' + zoneId)
         layer.addChild(cur_syllable)
 
         # add syl element containing text on page
         syl = MeiElement('syl')
         syl.setValue(str(syl_box['syl']))
+        syl.addAttribute('facs', '#' + zoneId)
         cur_syllable.addChild(syl)
 
         # iterate over glyphs on the page that fall within the bounds of this syllable
@@ -378,22 +388,22 @@ def build_mei(pairs, staves, classifier):
             if not new_el:
                 continue
             # four cases to consider:
-            # 1. no line break and not done with this syllable (more neume components to add)
-            # 2. no line break and done with this syllable (usually a clef)
-            # 3. a line break and not done with this syllable (a custos INSIDE a <syllable> tag)
-            # 4. a line break and done with this syllable (a custos OUTSIDE a <syllable> tag)
+            # 1. no line break and done with this syllable (usually a clef)
+            # 2. no line break and not done with this syllable (more neume components to add)
+            # 3. a line break and done with this syllable (a custos OUTSIDE a <syllable> tag)
+            # 4. a line break and not done with this syllable (a custos INSIDE a <syllable> tag)
 
             if not glyph['system_begin']:
-                # case 2
+                # case 1
                 if syllable_over:
                     layer.addChild(new_el)
-                # case 1
+                # case 2
                 else:
                     cur_syllable.addChild(new_el)
                 continue
 
             sb = MeiElement('sb')
-            cur_staff = int(glyph['staff']) - 1
+            cur_staff = int(glyph['staff'])
 
             bb = staves[cur_staff]['bounding_box']
             bb = {
@@ -405,17 +415,12 @@ def build_mei(pairs, staves, classifier):
             zoneId = generate_zone(surface, bb)
             sb.addAttribute('facs', '#' + zoneId)
 
-            # case 4: the syllable is over, so the custos goes outside the syllable
+            # case 3: the syllable is over, so the custos goes outside the syllable
+            # do not include custos in <sb> tags! this was a typo in the MEI documentation
             if syllable_over:
                 layer.addChild(new_el)
                 layer.addChild(sb)
-                # do not include custos in line breaks! this was a typo in the MEI documentation
-            # elif 'custos' in glyph['name']:
-            #     sb.addChild(new_el)
-            #     cur_syllable.addChild(sb)
-            # case 3
-            # if there is no custos in this line break but syllable continues --
-            # this does not often happen, probably just from errors in pitch-finding
+            # case 4
             else:
                 cur_syllable.addChild(new_el)
                 cur_syllable.addChild(sb)
@@ -423,35 +428,38 @@ def build_mei(pairs, staves, classifier):
     return meiDoc
 
 
-def merge_nearby_neume_components(meiDoc, width_multiplier=1):
+def merge_nearby_neume_components(meiDoc, width_mult):
     '''
-    a heuristic to merge together neume components that are 1) consecutive 2) within the same
-    syllable 3) within a certain distance from each other. this distance is by default set to the
+    A heuristic to merge together neume components that are 1) consecutive 2) within the same
+    syllable 3) within a certain distance from each other. This distance is by default set to the
     average width of a neume component within this page, but can be modified using the
-    @width_multiplier argument. the output MEI will still be correct even if this method is not run.
+    @width_multiplier argument. The output MEI will still be correct even if this method is not run.
     '''
     all_syllables = meiDoc.getElementsByName('syllable')
     surface = meiDoc.getElementsByName('surface')[0]
 
-    # build a dictionary linking each zone's ID to its element object for easy access
     surf_dict = {}
     neume_widths = []
     for c in surface.getChildren():
-        neume_widths.append(int(c.getAttribute('lrx').value) - int(c.getAttribute('ulx').value))
-        surf_dict[c.id] = c
-    med_neume_width = np.mean(neume_widths) * width_multiplier
+        surf_dict[c.id] = {}
+        for coord in c.attributes:
+            surf_dict[c.id][coord.name] = int(coord.value)
+
+    neume_widths = [x['lrx'] - x['ulx'] for x in surf_dict.values()]
+    med_neume_width = np.median(neume_widths) * width_mult
 
     # returns True if both inputs are of type 'neume' and they are close enough to be merged
     def compare_neumes(nl, nr):
         if not (nl.name == 'neume' and nr.name == 'neume'):
             return False
+          
+        nl_right_bound = max([surf_dict[n.getAttribute('facs').value[1:]]['lrx'] for n in nl.children])
+        nr_left_bound = min([surf_dict[n.getAttribute('facs').value[1:]]['ulx'] for n in nr.children])
 
-        left_nc = nl.children[-1]
-        right_nc = nr.children[0]
-        left_zone = surf_dict[left_nc.getAttribute('facs').value[1:]]
-        right_zone = surf_dict[left_nc.getAttribute('facs').value[1:]]
-        distance = int(left_zone.getAttribute('lrx').value) - int(right_zone.getAttribute('ulx').value)
-        return (distance - med_neume_width) <= 0
+        distance = nr_left_bound - nl_right_bound
+        # print(nl_right_bound, nr_left_bound, distance, (distance <= med_neume_width))
+
+        return (distance <= med_neume_width)
 
     for syllable in all_syllables:
         children = syllable.getChildren()
@@ -461,6 +469,9 @@ def merge_nearby_neume_components(meiDoc, width_multiplier=1):
 
         # holds the first neume in a sequence of neumes that will be merged
         target = None
+
+        # holds children once in the accumulator that must be removed after iteration is done
+        children_to_remove = []
 
         # iterate over all children. for each neume decide whether or not it should be merged
         # with the next one using compare_neumes. if yes, add the next one to the accumulator.
@@ -476,42 +487,43 @@ def merge_nearby_neume_components(meiDoc, width_multiplier=1):
                     ncs_to_merge += neume.children
                 for nc in ncs_to_merge:             # merge all neume components
                     target.addChild(nc)
-                for neume in accumulator:           # clean up neumes that were merged
-                    syllable.removeChild(neume)
+                children_to_remove += accumulator
+                # for neume in accumulator:           # clean up neumes that were merged
+                #     syllable.removeChild(neume)
                 target = None
                 accumulator = []
+
+        for neume in children_to_remove:
+            syllable.removeChild(neume)
+
     return meiDoc
 
 
-def process(jsomr, syls, classifier, width_mult=1, verbose=True):
+def process(jsomr, syls, classifier, width_mult, verbose=True):
+    '''
+    Runs the entire MEI encoding process given the three inputs to the rodan job and the
+    width_multiplier parameter for merging neume components.
+    '''
     glyphs = jsomr['glyphs']
     syl_boxes = syls['syl_boxes'] if syls is not None else None
     median_line_spacing = syls['median_line_spacing'] if syls is not None else None
-    staves = jsomr['staves']
 
-    print('adding flags to glyphs...')
     glyphs = add_flags_to_glyphs(glyphs)
-    print('performing neume-to-lyric alignment...')
     pairs = neume_to_lyric_alignment(glyphs, syl_boxes, median_line_spacing)
-    print('building MEI...')
-    meiDoc = build_mei(pairs, staves, classifier)
+    meiDoc = build_mei(pairs, classifier, jsomr['staves'], jsomr['page'])
 
-    print('neume component spacing > 0, merging nearby components...')
     if width_mult > 0:
-        meiDoc = merge_nearby_neume_components(meiDoc, width_multiplier=width_mult)
+        meiDoc = merge_nearby_neume_components(meiDoc, width_mult=width_mult)
 
     return documentToText(meiDoc)
 
 
 if __name__ == '__main__':
 
-    import PIL
-    from PIL import Image, ImageDraw, ImageFont, ImageOps
-
     classifier_fname = 'csv-square notation test_20190725015554.csv'
     classifier = pct.fetch_table_from_csv(classifier_fname)
 
-    f_inds = range(12, 16)
+    f_inds = range(322, 325)
 
     for f_ind in f_inds:
 
@@ -534,14 +546,18 @@ if __name__ == '__main__':
         print('building mei for {}...'.format(fname))
 
         glyphs = jsomr['glyphs']
-        syl_boxes = syls['syl_boxes']
-        staves = jsomr['staves']
+        syl_boxes = None  # syls['syl_boxes']
         median_line_spacing = syls['median_line_spacing']
 
+        print('adding flags to glyphs...')
         glyphs = add_flags_to_glyphs(glyphs)
+        print('performing neume-to-lyric alignment...')
         pairs = neume_to_lyric_alignment(glyphs, syl_boxes, median_line_spacing)
-        # draw_neume_alignment(in_png, out_fname_png, pairs)
-        meiDoc = build_mei(pairs, staves, classifier)
-        meiDoc = merge_nearby_neume_components(meiDoc)
+        print('building MEI...')
+        meiDoc = build_mei(pairs, classifier, jsomr['staves'], jsomr['page'])
+        print('neume component spacing > 0, merging nearby components...')
+        meiDoc = merge_nearby_neume_components(meiDoc, width_mult=0.25)
+
+        # draw_mei_doc(in_png, out_fname_png, meiDoc)
 
         documentToFile(meiDoc, out_fname)
