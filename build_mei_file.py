@@ -5,7 +5,7 @@ import parse_classifier_table as pct
 from pymei import MeiDocument, MeiElement, MeiAttribute, documentToText, documentToFile
 from itertools import groupby
 from visualize_alignment import draw_mei_doc
-# from rodan.jobs.MEI_encoding import __version__
+from rodan.jobs.MEI_encoding import __version__
 
 
 def add_flags_to_glyphs(glyphs):
@@ -131,7 +131,7 @@ def generate_base_document():
     fileDesc.addChild(titleSt)
     title = MeiElement('title')
     titleSt.addChild(title)
-    # title.setValue('MEI Encoding Output (%s)' % __version__)
+    title.setValue('MEI Encoding Output (%s)' % __version__)
     pubStmt = MeiElement('pubStmt')
     fileDesc.addChild(pubStmt)
 
@@ -452,12 +452,11 @@ def merge_nearby_neume_components(meiDoc, width_mult):
     def compare_neumes(nl, nr):
         if not (nl.name == 'neume' and nr.name == 'neume'):
             return False
-          
+
         nl_right_bound = max([surf_dict[n.getAttribute('facs').value[1:]]['lrx'] for n in nl.children])
         nr_left_bound = min([surf_dict[n.getAttribute('facs').value[1:]]['ulx'] for n in nr.children])
 
         distance = nr_left_bound - nl_right_bound
-        # print(nl_right_bound, nr_left_bound, distance, (distance <= med_neume_width))
 
         return (distance <= med_neume_width)
 
@@ -520,13 +519,17 @@ def process(jsomr, syls, classifier, width_mult, verbose=True):
 
 if __name__ == '__main__':
 
+    # A script for running the encoding process locally on the salzinnes manuscript.
+    # Replace paths and filenames as per your local setup.
+    # Assumes that all files are numbered with the "CF-" filenames that the images of the manuscript
+    # originally came with.
+
     classifier_fname = 'csv-square notation test_20190725015554.csv'
     classifier = pct.fetch_table_from_csv(classifier_fname)
 
-    f_inds = range(322, 325)
+    f_inds = range(0, 200)
 
     for f_ind in f_inds:
-
         fname = 'salzinnes_{:0>3}'.format(f_ind)
         inJSOMR = './jsomr-split/pitches_{}.json'.format(fname)
         in_syls = './syl_json/{}.json'.format(fname)
@@ -546,7 +549,7 @@ if __name__ == '__main__':
         print('building mei for {}...'.format(fname))
 
         glyphs = jsomr['glyphs']
-        syl_boxes = None  # syls['syl_boxes']
+        syl_boxes = syls['syl_boxes']
         median_line_spacing = syls['median_line_spacing']
 
         print('adding flags to glyphs...')

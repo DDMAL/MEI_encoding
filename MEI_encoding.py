@@ -71,7 +71,7 @@ class MEI_encoding(RodanTask):
         try:
             alignment_path = inputs['Text Alignment JSON'][0]['resource_path']
         except KeyError:
-            self.logger.info('no text alignment given! using dummy syllables...')
+            self.logger.warning('no text alignment given! using dummy syllables...')
             syls = None
         else:
             self.logger.info('loading text alignment results..')
