@@ -5,7 +5,7 @@ import parse_classifier_table as pct
 from pymei import MeiDocument, MeiElement, MeiAttribute, documentToText, documentToFile
 from itertools import groupby
 from visualize_alignment import draw_mei_doc
-from rodan.jobs.MEI_encoding import __version__
+#from rodan.jobs.MEI_encoding import __version__
 
 
 def add_flags_to_glyphs(glyphs):
@@ -105,7 +105,15 @@ def neume_to_lyric_alignment(glyphs, syl_boxes, median_line_spacing):
 
     starts.append(len(glyphs))
     for i in range(len(starts) - 1):
-        pairs.append((glyphs[starts[i]:starts[i+1]], syl_boxes[i]))
+
+        # it's possible that no glyphs are assigned to a syllable: in this case, just
+        # get rid of the syllable altogether.
+        glyph_range = glyphs[starts[i]:starts[i+1]]
+        if not glyph_range:
+            continue
+
+        pair = (glyph_range, syl_boxes[i])
+        pairs.append(pair)
 
     return pairs
 
@@ -131,7 +139,7 @@ def generate_base_document():
     fileDesc.addChild(titleSt)
     title = MeiElement('title')
     titleSt.addChild(title)
-    title.setValue('MEI Encoding Output (%s)' % __version__)
+    # title.setValue('MEI Encoding Output (%s)' % __version__)
     pubStmt = MeiElement('pubStmt')
     fileDesc.addChild(pubStmt)
 
@@ -561,6 +569,6 @@ if __name__ == '__main__':
         print('neume component spacing > 0, merging nearby components...')
         meiDoc = merge_nearby_neume_components(meiDoc, width_mult=0.25)
 
-        draw_mei_doc(in_png, out_fname_png, meiDoc)
+        #draw_mei_doc(in_png, out_fname_png, meiDoc)
 
         documentToFile(meiDoc, out_fname)
