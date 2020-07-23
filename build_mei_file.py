@@ -5,7 +5,11 @@ import parse_classifier_table as pct
 from pymei import MeiDocument, MeiElement, MeiAttribute, documentToText, documentToFile
 from itertools import groupby
 from visualize_alignment import draw_mei_doc
-#from rodan.jobs.MEI_encoding import __version__
+
+try:
+    from rodan.jobs.MEI_encoding import __version__
+except ImportError:
+    __version__ = "0"
 
 
 def add_flags_to_glyphs(glyphs):
@@ -139,7 +143,7 @@ def generate_base_document():
     fileDesc.addChild(titleSt)
     title = MeiElement('title')
     titleSt.addChild(title)
-    # title.setValue('MEI Encoding Output (%s)' % __version__)
+    title.setValue('MEI Encoding Output (%s)' % __version__)
     pubStmt = MeiElement('pubStmt')
     fileDesc.addChild(pubStmt)
 
