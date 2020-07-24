@@ -7,7 +7,7 @@ from pymei import MeiElement
 class TestMEIGlyphCreation(unittest.TestCase):
 
     punctum_xml = '<neume>  <nc/>  </neume>'
-    podastus2_xml = '<neume>  <nc/>  <nc intm="1S"/> </neume>'
+    podastus3_xml = '<neume>  <nc/>  <nc intm="2S"/> </neume>'
     clefc_xml = '<clef line="4" oct="None" pname="None" shape="C" />'
     dummy_surface = MeiElement('surface')
 
@@ -19,6 +19,14 @@ class TestMEIGlyphCreation(unittest.TestCase):
      'octave': '2',
      'staff': '3',
      'strt_pos': '10',
+     'system_begin': False}
+
+    clefc_glyph = {'bounding_box': {'lrx': 1010, 'lry': 1010, 'ulx': 1000, 'uly': 1000},
+     'name': 'clef.c',
+     'note': 'None',
+     'octave': 'None',
+     'staff': '9',
+     'strt_pos': '4',
      'system_begin': False}
 
     def test_punctum_element(self):
@@ -34,17 +42,17 @@ class TestMEIGlyphCreation(unittest.TestCase):
         res_atts = set([x.name for x in el.attributes])
         self.assertEqual(exp_atts, res_atts)
 
-    #
-    # def test_isupper(self):
-    #     self.assertTrue('FOO'.isupper())
-    #     self.assertFalse('Foo'.isupper())
-    #
-    # def test_split(self):
-    #     s = 'hello world'
-    #     self.assertEqual(s.split(), ['hello', 'world'])
-    #     # check that s.split fails when the separator is not a string
-    #     with self.assertRaises(TypeError):
-    #         s.split(2)
+    def test_clefc_element(self):
+        xml = ET.fromstring(self.clefc_xml)
+        el = bmf.create_primitive_element(xml, self.clefc_glyph, self.dummy_surface)
+
+        # should return a simple MeiElement with a shape, an line, and a facsimile
+        self.assertEqual(type(el), MeiElement)
+        self.assertEqual(el.getAttribute('line').value, self.clefc_glyph['strt_pos'])
+
+        exp_atts = set(['line', 'shape', 'facs'])
+        res_atts = set([x.name for x in el.attributes])
+        self.assertEqual(exp_atts, res_atts)
 
 
 if __name__ == '__main__':
