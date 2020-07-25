@@ -9,7 +9,7 @@ from visualize_alignment import draw_mei_doc
 try:
     from rodan.jobs.MEI_encoding import __version__
 except ImportError:
-    __version__ = "0"
+    __version__ = "[Not encoded using Rodan]"
 
 
 def add_flags_to_glyphs(glyphs):
@@ -233,7 +233,7 @@ def glyph_to_element(classifier, glyph, surface):
 
     Currently the assumption is that no MEI information in the given classifier is more than one
     level deep - that is, everything is either a single element (clef, custos) or the child of a
-    single element (neumes).
+    single element (neumes). THIS IS NOT TRUE FOR ALL NEUMATIC NOTATION TYPES!
     '''
     name = str(glyph['name'])
     try:
