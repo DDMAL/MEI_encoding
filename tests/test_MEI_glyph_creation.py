@@ -5,6 +5,7 @@ import build_mei_file as bmf
 from pymei import MeiElement
 from copy import copy
 
+
 class TestMEIGlyphCreation(unittest.TestCase):
 
     punctum_xml = '<neume>  <nc/>  </neume>'
@@ -110,7 +111,6 @@ class TestMEIGlyphCreation(unittest.TestCase):
         nc3.addAttribute('oct', '2')
         with self.assertRaises(ValueError) as context:
             res = bmf.resolve_interval(nc3, nc2)
-
 
 
 if __name__ == '__main__':
