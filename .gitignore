@@ -1,12 +1,14 @@
 jsomr*/
 syl_json/
-*.mei
-*.rng
+out_mei/
+old_split_mei/
+png/
+out_png/
+
 *.jpg
 *.png
 *.DS_Store
 *.ttf
-*.csv
 
 # test files
 CF-011/

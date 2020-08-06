@@ -3,6 +3,7 @@ import unittest
 import xml.etree.ElementTree as ET
 import build_mei_file as bmf
 from pymei import MeiElement
+from copy import copy
 
 class TestMEIGlyphCreation(unittest.TestCase):
 
@@ -39,7 +40,7 @@ class TestMEIGlyphCreation(unittest.TestCase):
         self.dummy_surface = MeiElement('surface')
 
     def test_punctum_primitive(self):
-        xml = ET.fromstring(self.punctum_xml)
+        xml = ET.fromstring(self.punctum_xml)[0]
         el = bmf.create_primitive_element(xml, self.punctum_glyph, self.dummy_surface)
 
         # should return a simple MeiElement with a note, an octave, and a facsimile
@@ -69,11 +70,48 @@ class TestMEIGlyphCreation(unittest.TestCase):
         dummy_classifier = {'neume.oblique3': ET.fromstring(self.oblique3_xml)}
         el = bmf.glyph_to_element(dummy_classifier, self.oblique3_glyph, self.dummy_surface)
 
+        # should return a single MeiElement with no attributes
         self.assertEqual(type(el), MeiElement)
         self.assertEqual(el.getAttributes(), [])
 
+        # and two children
         clds = el.getChildren()
         self.assertEqual(len(clds), 2)
+
+    def test_resolve_interval(self):
+        '''
+        Test resolving an interval between two neume components and getting a pname/octave for each
+        '''
+        nc1 = MeiElement('nc')
+        nc1.addAttribute('pname', 'c')
+        nc1.addAttribute('oct', '2')
+
+        # normal case
+        nc2 = MeiElement('nc')
+        nc2.addAttribute('intm', '2s')
+        res = bmf.resolve_interval(nc1, nc2)
+        self.assertEqual(res, ('e', '2'))
+
+        # octave up
+        nc2 = MeiElement('nc')
+        nc2.addAttribute('intm', '7S')
+        res = bmf.resolve_interval(nc1, nc2)
+        self.assertEqual(res, ('c', '3'))
+
+        # octave down
+        nc2 = MeiElement('nc')
+        nc2.addAttribute('intm', '-1s')
+        res = bmf.resolve_interval(nc1, nc2)
+        self.assertEqual(res, ('b', '1'))
+
+        # invalid pitch
+        # nc3 = MeiElement('nc')
+        # nc3.addAttribute('pname', 'z')
+        # nc3.addAttribute('oct', '2')
+        # with self.assertRaises(ValueError) as context:
+        #     res = bmf.resolve_interval(nc3, nc2)
+
+
 
 if __name__ == '__main__':
     unittest.main()
