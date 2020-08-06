@@ -26,11 +26,28 @@ class TestMEIValidity(unittest.TestCase):
 
     def test_build_mei(self):
         '''
-        Ensures that the MEI file generated validates agains the MEI RNG schema.
+        Ensures that the MEI file generated validates against the MEI RNG schema.
         '''
         mei_text = bmf.process(self.jsomr, self.syls, self.classifier, width_mult=1, verbose=False)
         mei_xml = etree.parse(StringIO(mei_text))
+        self.assertTrue(self.rng.validate(mei_xml))
 
+    def test_build_mei_no_merging(self):
+        '''
+        Ensures that the MEI file generated validates against the MEI RNG schema without merging
+        neume components as a final step.
+        '''
+        mei_text = bmf.process(self.jsomr, self.syls, self.classifier, width_mult=0, verbose=False)
+        mei_xml = etree.parse(StringIO(mei_text))
+        self.assertTrue(self.rng.validate(mei_xml))
+
+    def test_build_mei_no_syls(self):
+        '''
+        Ensures that the MEI file generated validates against the MEI RNG schema if syllables
+        are not supplied.
+        '''
+        mei_text = bmf.process(self.jsomr, None, self.classifier, width_mult=1, verbose=False)
+        mei_xml = etree.parse(StringIO(mei_text))
         self.assertTrue(self.rng.validate(mei_xml))
 
     def test_mei_remove_glyphs(self):
