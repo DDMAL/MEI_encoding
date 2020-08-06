@@ -4,6 +4,7 @@ out_mei/
 old_split_mei/
 png/
 out_png/
+schemas/
 
 *.jpg
 *.png
