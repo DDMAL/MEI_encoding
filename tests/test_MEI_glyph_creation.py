@@ -105,11 +105,11 @@ class TestMEIGlyphCreation(unittest.TestCase):
         self.assertEqual(res, ('b', '1'))
 
         # invalid pitch
-        # nc3 = MeiElement('nc')
-        # nc3.addAttribute('pname', 'z')
-        # nc3.addAttribute('oct', '2')
-        # with self.assertRaises(ValueError) as context:
-        #     res = bmf.resolve_interval(nc3, nc2)
+        nc3 = MeiElement('nc')
+        nc3.addAttribute('pname', 'z')
+        nc3.addAttribute('oct', '2')
+        with self.assertRaises(ValueError) as context:
+            res = bmf.resolve_interval(nc3, nc2)
 
 
 

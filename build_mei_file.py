@@ -301,8 +301,7 @@ def resolve_interval(prev_nc, cur_nc):
     try:
         start_index = scale.index(starting_pitch)
     except ValueError:
-        print('pname {} is not in scale {}!'.format(starting_pitch, scale))
-        return
+        raise ValueError('pname {} is not in scale {}'.format(starting_pitch, scale))
 
     end_idx = start_index + interval
 
