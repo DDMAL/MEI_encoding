@@ -42,7 +42,7 @@ def add_flags_to_glyphs(glyphs):
         else:
             temp2 = g
             midpoint = (temp1['bounding_box']['lrx'] + temp1['bounding_box']['ulx']) / 2
-            if (temp2['bounding_box']['ulx'] < midpoint):
+            if (temp2['bounding_box']['ulx'] < midpoint) and (temp1['bounding_box']['uly'] > temp2['bounding_box']['uly']):
                 temp3 = temp1
                 temp1 = temp2
                 temp2 = temp3
