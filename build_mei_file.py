@@ -32,6 +32,21 @@ def add_flags_to_glyphs(glyphs):
     # sort glyphs in lexicographical order by staff #, left to right
     glyphs.sort(key=lambda x: (int(x['staff']), int(x['offset'])))
 
+    temp1 = 0
+    temp2 = 0
+    i = 0
+    for g in glyphs:
+        if i == 0 :
+            i = 1
+            temp1 = g
+        else:
+            temp2 = g
+            midpoint = (temp1['bounding_box']['lrx'] + temp1['bounding_box']['ulx']) / 2
+            if (temp2['bounding_box']['ulx'] < midpoint):
+                temp3 = temp1
+                temp1 = temp2
+                temp2 = temp3
+
     # add flag to every glyph denoting whether or not a line break should come immediately after
     for i in range(len(glyphs)):
 
