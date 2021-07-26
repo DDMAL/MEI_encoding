@@ -32,6 +32,16 @@ def add_flags_to_glyphs(glyphs):
     # sort glyphs in lexicographical order by staff #, left to right
     glyphs.sort(key=lambda x: (int(x['staff']), int(x['offset'])))
 
+    temp1 = 0
+    temp2 = 0
+    for i in range(len(glyphs)-1):
+        temp1 = glyphs[i]
+        temp2 = glyphs[i+1]
+        midpoint = (temp1['bounding_box']['lrx'] + temp1['bounding_box']['ulx']) / 2
+        if temp2['bounding_box']['ulx'] < midpoint and temp2['bounding_box']['ulx'] > temp1['bounding_box']['ulx']:
+            if (temp1['bounding_box']['uly'] < temp2['bounding_box']['uly']):
+                glyphs[i+1], glyphs[i] = temp1, temp2
+
     # add flag to every glyph denoting whether or not a line break should come immediately after
     for i in range(len(glyphs)):
 
@@ -456,6 +466,7 @@ def merge_nearby_neume_components(meiDoc, width_mult):
         for coord in c.attributes:
             surf_dict[c.id][coord.name] = int(coord.value)
 
+
     neume_widths = [x['lrx'] - x['ulx'] for x in surf_dict.values()]
     med_neume_width = np.median(neume_widths) * width_mult
 
@@ -473,7 +484,7 @@ def merge_nearby_neume_components(meiDoc, width_mult):
 
     for syllable in all_syllables:
         children = syllable.getChildren()
-
+        
         # holds children of the current syllable that will be added to target
         accumulator = []
 
