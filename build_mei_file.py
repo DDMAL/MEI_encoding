@@ -38,9 +38,10 @@ def add_flags_to_glyphs(glyphs):
         temp1 = glyphs[i]
         temp2 = glyphs[i+1]
         midpoint = (temp1['bounding_box']['lrx'] + temp1['bounding_box']['ulx']) / 2
-        if temp2['bounding_box']['ulx'] < midpoint and temp2['bounding_box']['ulx'] > temp1['bounding_box']['ulx']:
+        if temp2['bounding_box']['ulx'] < midpoint and temp2['bounding_box']['ulx'] >= temp1['bounding_box']['ulx']:
             if (temp1['bounding_box']['uly'] < temp2['bounding_box']['uly']):
                 glyphs[i+1], glyphs[i] = temp1, temp2
+
 
     # add flag to every glyph denoting whether or not a line break should come immediately after
     for i in range(len(glyphs)):
