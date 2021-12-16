@@ -1,7 +1,7 @@
 import numpy as np
 import xml.etree.ElementTree as ET
 import csv
-
+import codecs
 
 def fetch_table_from_excel(classifier_fname):
     '''
@@ -57,15 +57,19 @@ def fetch_table_from_csv(fname):
     header = full_table[0]
     mei_index = header.index('mei')
     class_index = header.index('classification')
+    width_index = header.index('width')
     name_to_mei = {}
+    name_to_width = {}
     for row in full_table[1:]:
         raw_xml = row[mei_index]
         class_name = row[class_index]
+        width = [int(w) for w in row[width_index] if w.isdigit()]
         try:
             parsed = ET.fromstring(raw_xml)
         except ET.ParseError:
-            print('{} failed: xml {}'.format(class_name, raw_xml))
+            print('{} failed: xml {}, width {}'.format(class_name, raw_xml, width))
             continue
         name_to_mei[class_name] = parsed
+        name_to_width[class_name] = width
 
-    return name_to_mei
+    return name_to_mei, name_to_width
