@@ -216,7 +216,7 @@ def add_attributes_to_element(el, add):
     return el
 
 
-def create_primitive_element(xml, glyph, surface):
+def create_primitive_element(xml, glyph, idx, surface):
     '''
     Creates a "lowest-level" element out of the xml retrieved from the MEI mapping tool (passed as
     an ElementTree object in @xml) and registers its bounding box in the given surface.
@@ -232,12 +232,17 @@ def create_primitive_element(xml, glyph, surface):
     attribs['pname'] = str(glyph['note'])
     res = add_attributes_to_element(res, attribs)
 
-    zoneId = generate_zone(surface, glyph['bounding_box'])
+
+    if type(glyph['bounding_box']) == dict:
+        zoneId = generate_zone(surface, glyph['bounding_box'])
+    else:
+        zoneId = generate_zone(surface, glyph['bounding_box'][idx])
     res.addAttribute('facs', '#' + zoneId)
     return res
 
 
-def glyph_to_element(classifier, glyph, surface):
+
+def glyph_to_element(classifier, width_container, glyph, surface):
     '''
     Translates a glyph as output by the pitchfinder into an MEI element, registering bounding boxes
     in the given surface.
@@ -249,6 +254,7 @@ def glyph_to_element(classifier, glyph, surface):
     name = str(glyph['name'])
     try:
         xml = classifier[name]
+        width = width_container[name]
     except KeyError:
         print('entry {} not found in classifier table!'.format(name))
         return None
@@ -261,11 +267,39 @@ def glyph_to_element(classifier, glyph, surface):
 
     # if this is an element with no children, then just apply a pitch and position to it
     if not list(xml):
-        return create_primitive_element(xml, glyph, surface)
+        return create_primitive_element(xml, glyph, 0, surface)
 
     # else, this element has at least one child (is a neume)
     ncs = list(xml)
-    els = [create_primitive_element(nc, glyph, surface) for nc in ncs]
+
+    # divide bbox according to the width column
+    bb_org = glyph['bounding_box']
+    bb_new = []
+    length_org = bb_org['lrx'] - bb_org['ulx']
+    length_nc = length_org / len(width)
+    # iterate the list
+    for i in range(len(width)):
+        # count down the element
+        for j in range(width[i]):
+            bb_temp = {
+                'ulx': bb_org['ulx'] + i * length_nc,
+                'uly': bb_org['uly'],
+                'lrx': bb_org['lrx'] + (i+1) * length_nc,
+                'lry': bb_org['uly'],
+            }
+            bb_new.append(bb_temp)
+    glyph['bounding_box'] = bb_new
+
+    els = []
+    # els = [create_primitive_element(nc, glyph, surface) for nc in ncs]
+    for i in range(len(ncs)):
+        try:
+            el = create_primitive_element(ncs[i], glyph, i, surface)
+        except IndexError:
+            print('Width column indicates {} neume components but gets {} neume components from input for classifier {}'.format(len(glyph['bounding_box']), len(ncs), str(glyph['name'])))
+            continue
+        els.append(el)
+
     parent = MeiElement(xml.tag)
     parent.setChildren(els)
 
@@ -347,12 +381,15 @@ def generate_zone(surface, bb):
     return el.getId()
 
 
-def build_mei(pairs, classifier, staves, page):
+def build_mei(pairs, classifier, width_container, staves, page):
     '''
     Encodes the final MEI document using:
         @pairs: Pairs from the neume_to_lyric_alignment.
         @classifier: The MEI mapping dictionary output
             by fetch_table_from_csv() in parse_classifier_table.py
+        @width_container: The width column by fetch_table_from_csv() in parse_classifier_table.py
+            the length of the list indicates the width of the neume,
+            the sum of the list indicates the number of the ncs in the neume
         @staves: Bounding box information from pitch finding JSON.
         @page: Page dimension information from pitch finding JSON.
     '''
@@ -406,7 +443,7 @@ def build_mei(pairs, classifier, staves, page):
 
             # are we done with neume components in this grouping?
             syllable_over = not any(('neume' in x['name']) for x in gs[i:])
-            new_el = glyph_to_element(classifier, glyph, surface)
+            new_el = glyph_to_element(classifier, width_container, glyph, surface)
             if not new_el:
                 continue
             # four cases to consider:
@@ -548,7 +585,7 @@ if __name__ == '__main__':
     # originally came with.
 
     classifier_fname = 'csv-square notation test_20190725015554.csv'
-    classifier = pct.fetch_table_from_csv(classifier_fname)
+    classifier, width_container = pct.fetch_table_from_csv(classifier_fname)
 
     f_inds = range(0, 200)
 
@@ -580,7 +617,7 @@ if __name__ == '__main__':
         print('performing neume-to-lyric alignment...')
         pairs = neume_to_lyric_alignment(glyphs, syl_boxes, median_line_spacing)
         print('building MEI...')
-        meiDoc = build_mei(pairs, classifier, jsomr['staves'], jsomr['page'])
+        meiDoc = build_mei(pairs, classifier, width_container, jsomr['staves'], jsomr['page'])
         print('neume component spacing > 0, merging nearby components...')
         meiDoc = merge_nearby_neume_components(meiDoc, width_mult=0.25)
 
