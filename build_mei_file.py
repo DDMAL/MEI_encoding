@@ -594,6 +594,7 @@ if __name__ == '__main__':
         inJSOMR = './jsomr-split/pitches_{}.json'.format(fname)
         in_syls = './syl_json/{}.json'.format(fname)
         in_png = '/Users/tim/Desktop/PNG_compressed/CF-{:0>3}.png'.format(f_ind)
+        out_fname = './out_mei/output_split_{}.mei'.format(fname)
         out_fname_png = './out_png/{}_alignment.png'.format(fname)
 
         try:
