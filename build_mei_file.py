@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import xml.etree.ElementTree as ET
 import numpy as np
 import json
@@ -558,7 +559,7 @@ def merge_nearby_neume_components(meiDoc, width_mult):
     return meiDoc
 
 
-def process(jsomr, syls, classifier, width_mult, verbose=True):
+def process(jsomr, syls, classifier, width_mult, width_container,verbose=True):
     '''
     Runs the entire MEI encoding process given the three inputs to the rodan job and the
     width_multiplier parameter for merging neume components.
@@ -569,7 +570,7 @@ def process(jsomr, syls, classifier, width_mult, verbose=True):
 
     glyphs = add_flags_to_glyphs(glyphs)
     pairs = neume_to_lyric_alignment(glyphs, syl_boxes, median_line_spacing)
-    meiDoc = build_mei(pairs, classifier, jsomr['staves'], jsomr['page'])
+    meiDoc = build_mei(pairs, classifier, width_container, jsomr['staves'], jsomr['page'])
 
     if width_mult > 0:
         meiDoc = merge_nearby_neume_components(meiDoc, width_mult=width_mult)

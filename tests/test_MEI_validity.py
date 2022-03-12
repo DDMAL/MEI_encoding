@@ -1,10 +1,15 @@
+import os
+import sys
+
+root_folder = os.path.abspath(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(root_folder)
+
 from lxml import etree
 import unittest
 import build_mei_file as bmf
 import json
 import parse_classifier_table as pct
 from StringIO import StringIO
-
 
 class TestMEIValidity(unittest.TestCase):
 
@@ -18,10 +23,10 @@ class TestMEIValidity(unittest.TestCase):
     syls_path = './tests/resources/syls_salzinnes_304.json'
     pitches_path = './tests/resources/pitches_salzinnes_304.json'
 
-    with open(self.rng_path) as file:
+    with open(rng_path) as file:
         relaxng_doc = etree.parse(file)
-    self.rng = etree.RelaxNG(relaxng_doc)
-    self.classifier = pct.fetch_table_from_csv(self.classifier_path)
+    rng = etree.RelaxNG(relaxng_doc)
+    classifier = pct.fetch_table_from_csv(classifier_path)
 
     def setUp(self):
         with open(self.pitches_path) as file:

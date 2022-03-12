@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from rodan.jobs.base import RodanTask
 import build_mei_file as bm
 import parse_classifier_table as pct
@@ -79,9 +80,9 @@ class MEI_encoding(RodanTask):
                 syls = json.loads(file.read())
 
         self.logger.info('fetching classifier...')
-        classifier_table = pct.fetch_table_from_csv(inputs['MEI Mapping CSV'][0]['resource_path'])
+        classifier_table, width_container = pct.fetch_table_from_csv(inputs['MEI Mapping CSV'][0]['resource_path'])
         width_mult = settings[u'Neume Component Spacing']
-        mei_string = bm.process(jsomr, syls, classifier_table, width_mult)
+        mei_string = bm.process(jsomr, syls, classifier_table, width_mult, width_container)
 
         self.logger.info('writing to file...')
         outfile_path = outputs['MEI'][0]['resource_path']
