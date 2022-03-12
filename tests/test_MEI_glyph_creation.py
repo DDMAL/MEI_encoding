@@ -48,7 +48,7 @@ class TestMEIGlyphCreation(unittest.TestCase):
 
     def test_punctum_primitive(self):
         xml = ET.fromstring(self.punctum_xml)[0]
-        el = bmf.create_primitive_element(xml, self.punctum_glyph, self.dummy_surface)
+        el = bmf.create_primitive_element(xml, self.punctum_glyph, 0, self.dummy_surface)
 
         # should return a simple MeiElement with a note, an octave, and a facsimile
         self.assertEqual(type(el), MeiElement)
@@ -62,7 +62,7 @@ class TestMEIGlyphCreation(unittest.TestCase):
 
     def test_clefc_primitive(self):
         xml = ET.fromstring(self.clefc_xml)
-        el = bmf.create_primitive_element(xml, self.clefc_glyph, self.dummy_surface)
+        el = bmf.create_primitive_element(xml, self.clefc_glyph, 0, self.dummy_surface)
 
         # should return a simple MeiElement with a shape, an line, and a facsimile
         self.assertEqual(type(el), MeiElement)
@@ -75,13 +75,14 @@ class TestMEIGlyphCreation(unittest.TestCase):
 
     def test_oblique3_neume(self):
         dummy_classifier = {'neume.oblique3': ET.fromstring(self.oblique3_xml)}
-        el = bmf.glyph_to_element(dummy_classifier, self.oblique3_glyph, self.dummy_surface)
+        width_container = {'neume.oblique3': [1, 1]}
+        el = bmf.glyph_to_element(dummy_classifier, width_container, self.oblique3_glyph, self.dummy_surface)
 
-        # should return a single MeiElement with no attributes
+        # should return a single MeiElement with no attributes...
         self.assertEqual(type(el), MeiElement)
         self.assertEqual(el.getAttributes(), [])
 
-        # and two children
+        # ...and two children
         clds = el.getChildren()
         self.assertEqual(len(clds), 2)
 
